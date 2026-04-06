@@ -21,4 +21,4 @@ export const STATUS_COLORS = {
   dispose: "danger",
 };
 
-export const TEAMS = ["솔루션팀", "기술지원팀", "데이터컨설팅팀"];
+export const TEAMS = ["BSG", "Project", "LI"];
