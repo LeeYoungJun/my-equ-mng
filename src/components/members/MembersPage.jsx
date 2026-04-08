@@ -31,7 +31,6 @@ export default function MembersPage({
     });
   }, [members, filterTeam, search]);
 
-  // 필터 변경 시 선택 초기화
   useEffect(() => {
     setSelectedIds(new Set());
   }, [search, filterTeam]);
@@ -50,11 +49,8 @@ export default function MembersPage({
   };
 
   const handleSelectAll = () => {
-    if (allSelected) {
-      setSelectedIds(new Set());
-    } else {
-      setSelectedIds(new Set(filtered.map((m) => m.id)));
-    }
+    if (allSelected) setSelectedIds(new Set());
+    else setSelectedIds(new Set(filtered.map((m) => m.id)));
   };
 
   const clearSelection = () => setSelectedIds(new Set());
@@ -67,9 +63,9 @@ export default function MembersPage({
   return (
     <div>
       {/* Toolbar */}
-      <div className="flex items-center gap-3 mb-4 flex-wrap">
-        <div className="relative flex-[1_1_250px]">
-          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" aria-hidden="true" />
+      <div className="flex items-center gap-2.5 mb-4 flex-wrap">
+        <div className="relative flex-[1_1_240px]">
+          <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: "rgba(0,0,0,0.3)" }} aria-hidden="true" />
           <input
             value={search}
             onChange={(e) => onSearchChange(e.target.value)}
@@ -78,54 +74,61 @@ export default function MembersPage({
             aria-label="팀원 검색"
           />
         </div>
-        <select value={filterTeam} onChange={(e) => onFilterTeam(e.target.value)} className={`${selectClass} w-36 flex-none`} aria-label="팀 필터">
+        <select
+          value={filterTeam}
+          onChange={(e) => onFilterTeam(e.target.value)}
+          className={`${selectClass} w-36 flex-none`}
+          aria-label="팀 필터"
+        >
           <option value="all">전체 팀</option>
-          {TEAMS.map((t) => (
-            <option key={t} value={t}>{t}</option>
-          ))}
+          {TEAMS.map((t) => <option key={t} value={t}>{t}</option>)}
         </select>
-        <button onClick={onAdd} className="px-5 py-2.5 rounded-xl bg-dark text-white text-sm font-semibold cursor-pointer flex items-center gap-1.5">
+        <button
+          onClick={onAdd}
+          className="px-4 py-2.5 text-[14px] font-medium cursor-pointer flex items-center gap-1.5 border-none transition-opacity hover:opacity-85"
+          style={{ borderRadius: "8px", background: "#0071e3", color: "#fff", letterSpacing: "-0.1px" }}
+        >
           <Plus size={15} aria-hidden="true" />
           팀원 등록
         </button>
       </div>
 
-      {/* 선택 액션 바 */}
+      {/* Bulk select bar */}
       {someSelected && (
-        <div className="flex items-center gap-3 px-4 py-2.5 rounded-xl mb-4 bg-primary/5 border border-primary/20">
-          {/* 전체 선택/해제 체크박스 */}
+        <div
+          className="flex items-center gap-3 px-4 py-2.5 rounded-[10px] mb-4"
+          style={{ background: "rgba(0,113,227,0.06)", border: "1px solid rgba(0,113,227,0.15)" }}
+        >
           <button
             onClick={handleSelectAll}
-            className="w-5 h-5 rounded border-2 flex items-center justify-center cursor-pointer transition-all flex-shrink-0"
+            className="w-5 h-5 rounded flex items-center justify-center cursor-pointer transition-all flex-shrink-0 border-none"
             style={{
-              borderColor: "var(--color-primary)",
-              backgroundColor: allSelected ? "var(--color-primary)" : "transparent",
+              border: "1.5px solid #0071e3",
+              backgroundColor: allSelected ? "#0071e3" : "transparent",
             }}
             aria-label={allSelected ? "전체 선택 해제" : "전체 선택"}
           >
             {allSelected ? (
               <Check size={11} color="white" strokeWidth={3} />
             ) : (
-              <div className="w-2.5 h-0.5 rounded-full" style={{ backgroundColor: "var(--color-primary)" }} />
+              <div className="w-2.5 h-0.5 rounded-full" style={{ backgroundColor: "#0071e3" }} />
             )}
           </button>
-
-          <span className="text-sm font-semibold text-primary">
+          <span className="text-[13px] font-medium" style={{ color: "#0071e3", letterSpacing: "-0.1px" }}>
             {selectedIds.size}명 선택됨
           </span>
-
           <button
             onClick={clearSelection}
-            className="text-xs text-gray-400 hover:text-gray-600 transition-colors cursor-pointer border-none bg-transparent"
+            className="text-[12px] border-none bg-transparent cursor-pointer transition-colors"
+            style={{ color: "rgba(0,0,0,0.4)" }}
           >
             선택 취소
           </button>
-
           <div className="ml-auto">
             <button
               onClick={handleBulkDelete}
-              className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-semibold cursor-pointer transition-opacity hover:opacity-80 text-white"
-              style={{ backgroundColor: "var(--color-danger)" }}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-[8px] text-[13px] font-medium cursor-pointer transition-opacity hover:opacity-80 text-white border-none"
+              style={{ background: "#d93025" }}
             >
               <Trash2 size={13} aria-hidden="true" />
               {selectedIds.size}명 삭제
@@ -134,91 +137,112 @@ export default function MembersPage({
         </div>
       )}
 
-      {/* 카드 그리드 */}
-      <div className="grid grid-cols-[repeat(auto-fill,minmax(340px,1fr))] gap-3.5">
+      {/* Card Grid */}
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))] gap-2.5">
         {filtered.map((m) => {
           const mAssets = getMemberAssets(m.id);
           const isSelected = selectedIds.has(m.id);
           return (
             <article
               key={m.id}
-              className={`rounded-2xl p-5 border cursor-pointer transition-all ${
-                isSelected
-                  ? "bg-primary/5 border-primary/30 ring-2 ring-primary/20"
-                  : "bg-white border-gray-100 hover:shadow-md"
-              }`}
+              className="bg-white p-4 cursor-pointer transition-all"
+              style={{
+                borderRadius: "12px",
+                boxShadow: isSelected
+                  ? "0 0 0 2px #0071e3, rgba(0,0,0,0.08) 0 2px 8px"
+                  : "rgba(0,0,0,0.05) 0 1px 4px",
+                background: isSelected ? "rgba(0,113,227,0.03)" : "#fff",
+              }}
               onClick={() => onDetail(m)}
               tabIndex={0}
               onKeyDown={(e) => e.key === "Enter" && onDetail(m)}
               role="button"
               aria-label={`${m.name} 상세 보기`}
             >
-              <div className="flex items-center justify-between mb-3.5">
-                <div className="flex items-center gap-3">
-                  {/* 아바타 (클릭 시 선택 토글) */}
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2.5">
+                  {/* Avatar / select toggle */}
                   <div
-                    className="relative w-[42px] h-[42px] flex-shrink-0 group cursor-pointer"
+                    className="relative w-10 h-10 flex-shrink-0 group cursor-pointer"
                     onClick={(e) => toggleSelect(e, m.id)}
                     title={isSelected ? "선택 해제" : "클릭하여 선택"}
                   >
                     <MemberAvatar
                       member={m}
-                      className={`w-[42px] h-[42px] rounded-full transition-opacity duration-150 ${isSelected ? "opacity-0" : ""}`}
-                      style={{ background: "linear-gradient(135deg, var(--color-primary), var(--color-primary-light))" }}
-                      textClass="text-base"
+                      className={`w-10 h-10 rounded-full transition-opacity duration-150 ${isSelected ? "opacity-0" : ""}`}
+                      style={{ background: "linear-gradient(135deg, #0071e3, #2997ff)" }}
+                      textClass="text-[13px] font-semibold"
                     />
-                    {/* 호버 힌트 (미선택 상태) */}
                     {!isSelected && (
                       <div className="absolute inset-0 rounded-full bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none">
                         <div className="w-5 h-5 rounded-full border-2 border-white" />
                       </div>
                     )}
-                    {/* 선택된 상태 오버레이 */}
                     {isSelected && (
                       <div
                         className="absolute inset-0 rounded-full flex items-center justify-center"
-                        style={{ backgroundColor: "var(--color-primary)" }}
+                        style={{ backgroundColor: "#0071e3" }}
                       >
-                        <Check size={18} color="white" strokeWidth={3} />
+                        <Check size={16} color="white" strokeWidth={2.5} />
                       </div>
                     )}
                   </div>
 
                   <div>
-                    <div className="text-[15px] font-bold text-dark">{m.name}</div>
-                    <div className="text-xs text-gray-400">{m.team} · {m.position}</div>
+                    <div
+                      className="text-[14px] font-semibold"
+                      style={{ color: "#1d1d1f", letterSpacing: "-0.2px" }}
+                    >
+                      {m.name}
+                    </div>
+                    <div className="text-[12px] mt-0.5" style={{ color: "rgba(0,0,0,0.4)" }}>
+                      {m.team} · {m.position}
+                    </div>
                   </div>
                 </div>
 
-                <div className="flex gap-1">
+                <div className="flex gap-0.5">
                   <button
                     onClick={(e) => { e.stopPropagation(); onEdit(m); }}
-                    className="p-1 bg-transparent border-none cursor-pointer text-gray-400 hover:text-gray-600"
+                    className="p-1.5 rounded-[6px] bg-transparent border-none cursor-pointer transition-colors"
+                    style={{ color: "rgba(0,0,0,0.35)" }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(0,0,0,0.06)"; e.currentTarget.style.color = "#1d1d1f"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = ""; e.currentTarget.style.color = "rgba(0,0,0,0.35)"; }}
                     aria-label={`${m.name} 수정`}
                   >
-                    <Edit3 size={14} />
+                    <Edit3 size={13} />
                   </button>
                   <button
                     onClick={(e) => { e.stopPropagation(); onDelete(m.id); }}
-                    className="p-1 bg-transparent border-none cursor-pointer text-danger hover:text-danger/80"
+                    className="p-1.5 rounded-[6px] bg-transparent border-none cursor-pointer transition-colors"
+                    style={{ color: "#d93025" }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(217,48,37,0.08)"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = ""; }}
                     aria-label={`${m.name} 삭제`}
                   >
-                    <Trash2 size={14} />
+                    <Trash2 size={13} />
                   </button>
                 </div>
               </div>
 
               {mAssets.length > 0 ? (
-                <div className="flex flex-col gap-1.5">
+                <div className="flex flex-col gap-1">
                   {mAssets.map((a) => (
-                    <div key={a.id} className="flex items-center gap-2 px-2.5 py-1.5 bg-gray-50 rounded-lg text-xs">
-                      <CategoryIcon category={a.category} size={14} />
-                      <span className="text-gray-500 font-medium">{a.manufacturer} {a.model}</span>
+                    <div
+                      key={a.id}
+                      className="flex items-center gap-2 px-2.5 py-1.5 rounded-[8px] text-[12px]"
+                      style={{ background: "#f5f5f7" }}
+                    >
+                      <span style={{ color: "rgba(0,0,0,0.4)" }}><CategoryIcon category={a.category} size={13} /></span>
+                      <span className="font-medium" style={{ color: "#1d1d1f" }}>{a.manufacturer} {a.model}</span>
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="px-2.5 py-2 bg-gray-50 rounded-lg text-xs text-gray-400 text-center">
+                <div
+                  className="px-2.5 py-2 rounded-[8px] text-[12px] text-center"
+                  style={{ background: "#f5f5f7", color: "rgba(0,0,0,0.3)" }}
+                >
                   배정된 장비 없음
                 </div>
               )}

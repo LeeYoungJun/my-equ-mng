@@ -64,7 +64,7 @@ export default function App() {
   const isAssetDetail = detailItem && !!detailItem.category;
 
   return (
-    <div className="flex h-screen font-sans bg-[#f5f6f8] text-gray-700">
+    <div className="flex h-screen font-sans bg-[#f5f5f7] text-[#1d1d1f]">
       <Sidebar
         currentPage={page}
         onNavigate={navigate}
@@ -72,7 +72,7 @@ export default function App() {
         onToggle={() => setSidebarCollapsed((v) => !v)}
       />
 
-      <main className="flex-1 overflow-auto px-8 py-7">
+      <main className="flex-1 overflow-auto px-8 py-8">
         <PageHeader
           title={navItems.find((n) => n.id === page)?.label}
           description={getDescription()}

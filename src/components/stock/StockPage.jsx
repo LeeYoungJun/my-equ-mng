@@ -3,39 +3,65 @@ import CategoryIcon from "../ui/CategoryIcon";
 
 function StockTable({ items, title, emptyMsg, onAssign }) {
   return (
-    <section className="bg-white rounded-2xl border border-gray-100 mb-5">
-      <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-        <h3 className="text-[15px] font-bold text-dark">
-          {title} <span className="text-gray-400 font-normal text-[13px]">({items.length})</span>
+    <section
+      className="bg-white mb-4 overflow-hidden"
+      style={{ borderRadius: "12px", boxShadow: "rgba(0,0,0,0.05) 0 1px 4px" }}
+    >
+      <div
+        className="px-5 py-4 flex items-center justify-between"
+        style={{ borderBottom: "1px solid rgba(0,0,0,0.06)" }}
+      >
+        <h3 className="text-[14px] font-semibold" style={{ color: "#1d1d1f", letterSpacing: "-0.2px" }}>
+          {title}{" "}
+          <span className="text-[12px] font-normal" style={{ color: "rgba(0,0,0,0.4)" }}>
+            ({items.length})
+          </span>
         </h3>
       </div>
       {items.length > 0 ? (
         <table className="w-full border-collapse text-[13px]">
           <thead>
-            <tr className="border-b border-gray-100">
+            <tr style={{ borderBottom: "1px solid rgba(0,0,0,0.05)" }}>
               {["카테고리", "제조사", "모델명", "세부사양", "비고", "액션"].map((h) => (
-                <th key={h} className="text-left px-3.5 py-2.5 text-gray-400 font-semibold text-[11px]">{h}</th>
+                <th
+                  key={h}
+                  className="text-left px-4 py-2.5 font-semibold text-[11px]"
+                  style={{ color: "rgba(0,0,0,0.4)", background: "#f5f5f7" }}
+                >
+                  {h}
+                </th>
               ))}
             </tr>
           </thead>
           <tbody>
             {items.map((a) => (
-              <tr key={a.id} className="border-b border-gray-50">
-                <td className="px-3.5 py-2.5">
-                  <span className="flex items-center gap-2 text-gray-500">
-                    <CategoryIcon category={a.category} size={16} />
+              <tr
+                key={a.id}
+                style={{ borderBottom: "1px solid rgba(0,0,0,0.04)" }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = "#f5f5f7")}
+                onMouseLeave={(e) => (e.currentTarget.style.background = "")}
+              >
+                <td className="px-4 py-2.5">
+                  <span className="flex items-center gap-2" style={{ color: "rgba(0,0,0,0.48)" }}>
+                    <CategoryIcon category={a.category} size={15} />
                     {a.category}
                   </span>
                 </td>
-                <td className="px-3.5 py-2.5 text-gray-500">{a.manufacturer}</td>
-                <td className="px-3.5 py-2.5 font-semibold text-dark">{a.model}</td>
-                <td className="px-3.5 py-2.5 text-gray-400 text-xs max-w-[200px] overflow-hidden text-ellipsis whitespace-nowrap">{a.spec || "-"}</td>
-                <td className="px-3.5 py-2.5 text-gray-400 text-xs">{a.note || "-"}</td>
-                <td className="px-3.5 py-2.5">
+                <td className="px-4 py-2.5" style={{ color: "rgba(0,0,0,0.48)" }}>{a.manufacturer}</td>
+                <td className="px-4 py-2.5 font-semibold" style={{ color: "#1d1d1f" }}>{a.model}</td>
+                <td
+                  className="px-4 py-2.5 text-[12px] max-w-[200px] overflow-hidden text-ellipsis whitespace-nowrap"
+                  style={{ color: "rgba(0,0,0,0.4)" }}
+                >
+                  {a.spec || "-"}
+                </td>
+                <td className="px-4 py-2.5 text-[12px]" style={{ color: "rgba(0,0,0,0.4)" }}>{a.note || "-"}</td>
+                <td className="px-4 py-2.5">
                   {a.status === "stock" && onAssign && (
                     <button
                       onClick={() => onAssign(a.id)}
-                      className="px-3.5 py-1.5 rounded-xl bg-dark text-white text-xs font-semibold cursor-pointer flex items-center gap-1"
+                      className="px-3 py-1.5 text-[12px] font-medium cursor-pointer flex items-center gap-1 border-none transition-opacity hover:opacity-80"
+                      style={{ borderRadius: "8px", background: "#0071e3", color: "#fff" }}
                       aria-label={`${a.model} 배정`}
                     >
                       <UserPlus size={12} aria-hidden="true" />
@@ -48,7 +74,9 @@ function StockTable({ items, title, emptyMsg, onAssign }) {
           </tbody>
         </table>
       ) : (
-        <div className="py-10 text-center text-gray-400 text-[13px]">{emptyMsg}</div>
+        <div className="py-10 text-center text-[13px]" style={{ color: "rgba(0,0,0,0.3)" }}>
+          {emptyMsg}
+        </div>
       )}
     </section>
   );
