@@ -1,14 +1,29 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { INITIAL_MEMBERS } from "../data/members";
 import { INITIAL_ASSETS } from "../data/assets";
 import { INITIAL_HISTORY } from "../data/history";
 import { CATEGORIES, TEAMS } from "../data/constants";
 import { uid } from "../utils";
 
+const LS_KEYS = { members: "equ_members", assets: "equ_assets", history: "equ_history" };
+
+function loadOrDefault(key, fallback) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 export default function useAssetManager() {
-  const [members, setMembers] = useState(INITIAL_MEMBERS);
-  const [assets, setAssets] = useState(INITIAL_ASSETS);
-  const [history, setHistory] = useState(INITIAL_HISTORY);
+  const [members, setMembers] = useState(() => loadOrDefault(LS_KEYS.members, INITIAL_MEMBERS));
+  const [assets, setAssets] = useState(() => loadOrDefault(LS_KEYS.assets, INITIAL_ASSETS));
+  const [history, setHistory] = useState(() => loadOrDefault(LS_KEYS.history, INITIAL_HISTORY));
+
+  useEffect(() => { localStorage.setItem(LS_KEYS.members, JSON.stringify(members)); }, [members]);
+  useEffect(() => { localStorage.setItem(LS_KEYS.assets, JSON.stringify(assets)); }, [assets]);
+  useEffect(() => { localStorage.setItem(LS_KEYS.history, JSON.stringify(history)); }, [history]);
 
   // Lookups
   const getMember = useCallback((id) => members.find((m) => m.id === id), [members]);
