@@ -24,7 +24,7 @@ const PAGE_DESCRIPTIONS = {
 
 export default function App() {
   const manager = useAssetManager();
-  const { members, assets, history, stats, getMember, getAsset, getMemberAssets, getAssetHistory, saveAsset, saveMember, assignAsset, returnAsset, deleteAsset, deleteMember, deleteMembers } = manager;
+  const { members, assets, history, stats, loading, getMember, getAsset, getMemberAssets, getAssetHistory, saveAsset, saveMember, assignAsset, returnAsset, deleteAsset, deleteMember, deleteMembers } = manager;
 
   const [page, setPage] = useState("dashboard");
   const [search, setSearch] = useState("");
@@ -62,6 +62,17 @@ export default function App() {
   };
 
   const isAssetDetail = detailItem && !!detailItem.category;
+
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-[#f5f5f7] text-[#1d1d1f]">
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-sm text-gray-500">데이터를 불러오는 중...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen font-sans bg-[#f5f5f7] text-[#1d1d1f]">

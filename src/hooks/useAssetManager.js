@@ -1,39 +1,60 @@
 import { useState, useCallback, useMemo, useEffect } from "react";
+import { supabase } from "../lib/supabase";
 import { INITIAL_MEMBERS } from "../data/members";
 import { INITIAL_ASSETS } from "../data/assets";
 import { INITIAL_HISTORY } from "../data/history";
 import { CATEGORIES, TEAMS } from "../data/constants";
 import { uid } from "../utils";
 
-const LS_KEYS = { members: "equ_members", assets: "equ_assets", history: "equ_history" };
-
-function loadOrDefault(key, fallback) {
-  try {
-    const raw = localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : fallback;
-  } catch {
-    return fallback;
-  }
-}
-
-function persistToFile(key, data) {
-  if (import.meta.env.DEV) {
-    fetch("/api/persist", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ key, data }),
-    }).catch(() => {});
-  }
-}
-
 export default function useAssetManager() {
-  const [members, setMembers] = useState(() => loadOrDefault(LS_KEYS.members, INITIAL_MEMBERS));
-  const [assets, setAssets] = useState(() => loadOrDefault(LS_KEYS.assets, INITIAL_ASSETS));
-  const [history, setHistory] = useState(() => loadOrDefault(LS_KEYS.history, INITIAL_HISTORY));
+  const [members, setMembers] = useState([]);
+  const [assets, setAssets] = useState([]);
+  const [history, setHistory] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  useEffect(() => { localStorage.setItem(LS_KEYS.members, JSON.stringify(members)); persistToFile("members", members); }, [members]);
-  useEffect(() => { localStorage.setItem(LS_KEYS.assets, JSON.stringify(assets)); persistToFile("assets", assets); }, [assets]);
-  useEffect(() => { localStorage.setItem(LS_KEYS.history, JSON.stringify(history)); persistToFile("history", history); }, [history]);
+  useEffect(() => {
+    async function load() {
+      try {
+        const [
+          { data: membersData, error: me },
+          { data: assetsData, error: ae },
+          { data: historyData, error: he },
+        ] = await Promise.all([
+          supabase.from("members").select("*"),
+          supabase.from("assets").select("*"),
+          supabase.from("history").select("*").order("date", { ascending: false }),
+        ]);
+
+        if (me || ae || he) throw me || ae || he;
+
+        if (membersData.length === 0) {
+          await supabase.from("members").insert(INITIAL_MEMBERS);
+          setMembers(INITIAL_MEMBERS);
+        } else {
+          setMembers(membersData);
+        }
+
+        if (assetsData.length === 0) {
+          await supabase.from("assets").insert(INITIAL_ASSETS);
+          setAssets(INITIAL_ASSETS);
+        } else {
+          setAssets(assetsData);
+        }
+
+        if (historyData.length === 0 && INITIAL_HISTORY.length > 0) {
+          await supabase.from("history").insert(INITIAL_HISTORY);
+          setHistory(INITIAL_HISTORY);
+        } else {
+          setHistory(historyData);
+        }
+      } catch (err) {
+        console.error("Supabase load failed:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+  }, []);
 
   // Lookups
   const getMember = useCallback((id) => members.find((m) => m.id === id), [members]);
@@ -69,28 +90,46 @@ export default function useAssetManager() {
   const saveAsset = useCallback(
     (data, editItem) => {
       if (editItem) {
-        setAssets((prev) => prev.map((a) => (a.id === editItem.id ? { ...a, ...data } : a)));
+        const updated = { ...editItem, ...data };
+        setAssets((prev) => prev.map((a) => (a.id === editItem.id ? updated : a)));
+        supabase.from("assets").update(data).eq("id", editItem.id).then(({ error }) => {
+          if (error) console.error("asset update failed:", error);
+        });
+
         if (data.assignedTo !== editItem.assignedTo) {
-          setHistory((prev) => [
-            ...prev,
-            {
-              id: uid(),
-              assetId: editItem.id,
-              action: data.assignedTo ? "assign" : "return",
-              memberId: data.assignedTo || editItem.assignedTo,
-              date: new Date().toISOString().split("T")[0],
-              note: data.assignedTo ? "장비 배정" : "장비 반납",
-            },
-          ]);
+          const entry = {
+            id: uid(),
+            assetId: editItem.id,
+            action: data.assignedTo ? "assign" : "return",
+            memberId: data.assignedTo || editItem.assignedTo,
+            date: new Date().toISOString().split("T")[0],
+            note: data.assignedTo ? "장비 배정" : "장비 반납",
+          };
+          setHistory((prev) => [entry, ...prev]);
+          supabase.from("history").insert(entry).then(({ error }) => {
+            if (error) console.error("history insert failed:", error);
+          });
         }
       } else {
-        const newId = uid();
-        setAssets((prev) => [...prev, { ...data, id: newId }]);
+        const newAsset = { ...data, id: uid() };
+        setAssets((prev) => [...prev, newAsset]);
+        supabase.from("assets").insert(newAsset).then(({ error }) => {
+          if (error) console.error("asset insert failed:", error);
+        });
+
         if (data.assignedTo) {
-          setHistory((prev) => [
-            ...prev,
-            { id: uid(), assetId: newId, action: "assign", memberId: data.assignedTo, date: new Date().toISOString().split("T")[0], note: "신규 등록 후 배정" },
-          ]);
+          const entry = {
+            id: uid(),
+            assetId: newAsset.id,
+            action: "assign",
+            memberId: data.assignedTo,
+            date: new Date().toISOString().split("T")[0],
+            note: "신규 등록 후 배정",
+          };
+          setHistory((prev) => [entry, ...prev]);
+          supabase.from("history").insert(entry).then(({ error }) => {
+            if (error) console.error("history insert failed:", error);
+          });
         }
       }
     },
@@ -100,8 +139,15 @@ export default function useAssetManager() {
   const saveMember = useCallback((data, editItem) => {
     if (editItem) {
       setMembers((prev) => prev.map((m) => (m.id === editItem.id ? { ...m, ...data } : m)));
+      supabase.from("members").update(data).eq("id", editItem.id).then(({ error }) => {
+        if (error) console.error("member update failed:", error);
+      });
     } else {
-      setMembers((prev) => [...prev, { ...data, id: uid() }]);
+      const newMember = { ...data, id: uid() };
+      setMembers((prev) => [...prev, newMember]);
+      supabase.from("members").insert(newMember).then(({ error }) => {
+        if (error) console.error("member insert failed:", error);
+      });
     }
   }, []);
 
@@ -109,24 +155,47 @@ export default function useAssetManager() {
     setAssets((prev) =>
       prev.map((a) => (a.id === assetId ? { ...a, assignedTo: memberId, status: "in-use", isShared: false, sharedLabel: "" } : a)),
     );
-    setHistory((prev) => [
-      ...prev,
-      { id: uid(), assetId, action: "assign", memberId, date: new Date().toISOString().split("T")[0], note: "장비 배정" },
-    ]);
+    supabase.from("assets").update({ assignedTo: memberId, status: "in-use", isShared: false, sharedLabel: "" }).eq("id", assetId).then(({ error }) => {
+      if (error) console.error("assign asset failed:", error);
+    });
+
+    const entry = {
+      id: uid(),
+      assetId,
+      action: "assign",
+      memberId,
+      date: new Date().toISOString().split("T")[0],
+      note: "장비 배정",
+    };
+    setHistory((prev) => [entry, ...prev]);
+    supabase.from("history").insert(entry).then(({ error }) => {
+      if (error) console.error("history insert failed:", error);
+    });
   }, []);
 
   const returnAsset = useCallback(
     (assetId) => {
       const asset = assets.find((a) => a.id === assetId);
       if (asset?.assignedTo) {
-        setHistory((prev) => [
-          ...prev,
-          { id: uid(), assetId, action: "return", memberId: asset.assignedTo, date: new Date().toISOString().split("T")[0], note: "장비 반납" },
-        ]);
+        const entry = {
+          id: uid(),
+          assetId,
+          action: "return",
+          memberId: asset.assignedTo,
+          date: new Date().toISOString().split("T")[0],
+          note: "장비 반납",
+        };
+        setHistory((prev) => [entry, ...prev]);
+        supabase.from("history").insert(entry).then(({ error }) => {
+          if (error) console.error("history insert failed:", error);
+        });
       }
       setAssets((prev) =>
         prev.map((a) => (a.id === assetId ? { ...a, assignedTo: null, status: "stock", isShared: false, sharedLabel: "" } : a)),
       );
+      supabase.from("assets").update({ assignedTo: null, status: "stock", isShared: false, sharedLabel: "" }).eq("id", assetId).then(({ error }) => {
+        if (error) console.error("return asset failed:", error);
+      });
     },
     [assets],
   );
@@ -134,6 +203,9 @@ export default function useAssetManager() {
   const deleteAsset = useCallback((id) => {
     if (confirm("정말 삭제하시겠습니까?")) {
       setAssets((prev) => prev.filter((a) => a.id !== id));
+      supabase.from("assets").delete().eq("id", id).then(({ error }) => {
+        if (error) console.error("asset delete failed:", error);
+      });
     }
   }, []);
 
@@ -146,6 +218,9 @@ export default function useAssetManager() {
       }
       if (confirm("정말 삭제하시겠습니까?")) {
         setMembers((prev) => prev.filter((m) => m.id !== id));
+        supabase.from("members").delete().eq("id", id).then(({ error }) => {
+          if (error) console.error("member delete failed:", error);
+        });
       }
     },
     [assets],
@@ -163,6 +238,9 @@ export default function useAssetManager() {
       if (deletable.length === 0) return;
       if (confirm(`${deletable.length}명을 삭제하시겠습니까?`)) {
         setMembers((prev) => prev.filter((m) => !deletable.includes(m.id)));
+        supabase.from("members").delete().in("id", deletable).then(({ error }) => {
+          if (error) console.error("bulk member delete failed:", error);
+        });
       }
     },
     [assets, members],
@@ -173,6 +251,7 @@ export default function useAssetManager() {
     assets,
     history,
     stats,
+    loading,
     getMember,
     getAsset,
     getMemberAssets,
