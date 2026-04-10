@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Search, Plus, Edit3, Trash2, UserPlus, ArrowLeft } from "lucide-react";
+import { Search, Plus, Edit3, Trash2, UserPlus, ArrowLeft, AlertTriangle } from "lucide-react";
 import { CATEGORIES, STATUSES } from "../../data/constants";
 import { inputClass, selectClass } from "../ui/FormField";
 import CategoryIcon from "../ui/CategoryIcon";
@@ -22,24 +22,37 @@ export default function AssetsPage({
   onReturn,
   onDelete,
 }) {
+  const STATUS_ORDER = { "in-use": 0, stock: 1, repair: 2, dispose: 3 };
+
+  const fiveYearsAgo = useMemo(() => {
+    const d = new Date();
+    d.setFullYear(d.getFullYear() - 5);
+    return d;
+  }, []);
+
+  const needsReplacement = (a) =>
+    a.category === "Laptop" && a.purchaseDate && new Date(a.purchaseDate) < fiveYearsAgo;
+
   const filtered = useMemo(() => {
-    return assets.filter((a) => {
-      if (filterCategory !== "all" && a.category !== filterCategory) return false;
-      if (filterStatus !== "all" && a.status !== filterStatus) return false;
-      if (search) {
-        const q = search.toLowerCase();
-        const member = a.assignedTo ? getMember(a.assignedTo) : null;
-        const memberName = member ? member.name : a.sharedLabel || "";
-        return (
-          a.model.toLowerCase().includes(q) ||
-          a.manufacturer.toLowerCase().includes(q) ||
-          a.serial.toLowerCase().includes(q) ||
-          memberName.toLowerCase().includes(q)
-        );
-      }
-      return true;
-    });
-  }, [assets, filterCategory, filterStatus, search, getMember]);
+    return assets
+      .filter((a) => {
+        if (filterCategory !== "all" && a.category !== filterCategory) return false;
+        if (filterStatus !== "all" && a.status !== filterStatus) return false;
+        if (search) {
+          const q = search.toLowerCase();
+          const member = a.assignedTo ? getMember(a.assignedTo) : null;
+          const memberName = member ? member.name : a.sharedLabel || "";
+          return (
+            a.model.toLowerCase().includes(q) ||
+            a.manufacturer.toLowerCase().includes(q) ||
+            a.serial.toLowerCase().includes(q) ||
+            memberName.toLowerCase().includes(q)
+          );
+        }
+        return true;
+      })
+      .sort((a, b) => (STATUS_ORDER[a.status] ?? 9) - (STATUS_ORDER[b.status] ?? 9));
+  }, [assets, filterCategory, filterStatus, search, getMember, fiveYearsAgo]);
 
   return (
     <div>
@@ -111,13 +124,14 @@ export default function AssetsPage({
             {filtered.map((a) => {
               const member = a.assignedTo ? getMember(a.assignedTo) : null;
               const userLabel = member ? member.name : a.isShared ? a.sharedLabel : "-";
+              const replace = needsReplacement(a);
               return (
                 <tr
                   key={a.id}
                   className="transition-colors"
                   style={{ borderBottom: "1px solid rgba(0,0,0,0.04)" }}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = "#f5f5f7")}
-                  onMouseLeave={(e) => (e.currentTarget.style.background = "")}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = replace ? "rgba(255,149,0,0.06)" : "#f5f5f7")}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = replace ? "rgba(255,149,0,0.04)" : "")}
                 >
                   <td className="px-4 py-2.5">
                     <span className="flex items-center gap-2" style={{ color: "rgba(0,0,0,0.48)" }}>
@@ -127,15 +141,27 @@ export default function AssetsPage({
                   </td>
                   <td className="px-4 py-2.5" style={{ color: "rgba(0,0,0,0.48)" }}>{a.manufacturer}</td>
                   <td className="px-4 py-2.5">
-                    <button
-                      onClick={() => onDetail(a)}
-                      className="bg-transparent border-none cursor-pointer font-semibold transition-colors p-0 text-[13px]"
-                      style={{ color: "#1d1d1f", letterSpacing: "-0.1px" }}
-                      onMouseEnter={(e) => (e.target.style.color = "#0071e3")}
-                      onMouseLeave={(e) => (e.target.style.color = "#1d1d1f")}
-                    >
-                      {a.model}
-                    </button>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <button
+                        onClick={() => onDetail(a)}
+                        className="bg-transparent border-none cursor-pointer font-semibold transition-colors p-0 text-[13px]"
+                        style={{ color: "#1d1d1f", letterSpacing: "-0.1px" }}
+                        onMouseEnter={(e) => (e.target.style.color = "#0071e3")}
+                        onMouseLeave={(e) => (e.target.style.color = "#1d1d1f")}
+                      >
+                        {a.model}
+                      </button>
+                      {replace && (
+                        <span
+                          className="flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-semibold rounded-[5px]"
+                          style={{ background: "rgba(255,149,0,0.12)", color: "#c47e00" }}
+                          title="구입 후 5년이 경과한 노트북입니다"
+                        >
+                          <AlertTriangle size={9} strokeWidth={2.5} />
+                          교체 필요
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-4 py-2.5 font-mono text-[11px]" style={{ color: "rgba(0,0,0,0.35)" }}>
                     {a.serial || "-"}
