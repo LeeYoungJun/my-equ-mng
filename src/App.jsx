@@ -24,7 +24,7 @@ const PAGE_DESCRIPTIONS = {
 
 export default function App() {
   const manager = useAssetManager();
-  const { members, assets, history, stats, loading, getMember, getAsset, getMemberAssets, getAssetHistory, saveAsset, saveMember, assignAsset, returnAsset, deleteAsset, deleteMember, deleteMembers } = manager;
+  const { members, assets, history, stats, loading, getMember, getAsset, getMemberAssets, getAssetHistory, saveAsset, saveMember, assignAsset, returnAsset, deleteAsset, deleteAssets, deleteMember, deleteMembers } = manager;
 
   const [page, setPage] = useState("dashboard");
   const [search, setSearch] = useState("");
@@ -114,6 +114,7 @@ export default function App() {
             onAssign={(assetId) => setModalOpen({ type: "assign", assetId })}
             onReturn={returnAsset}
             onDelete={deleteAsset}
+            onDeleteMultiple={deleteAssets}
           />
         )}
 

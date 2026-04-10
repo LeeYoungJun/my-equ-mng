@@ -209,6 +209,27 @@ export default function useAssetManager() {
     }
   }, []);
 
+  const deleteAssets = useCallback(
+    (ids) => {
+      const inUseNames = ids
+        .filter((id) => assets.some((a) => a.id === id && a.status === "in-use"))
+        .map((id) => assets.find((a) => a.id === id)?.model)
+        .filter(Boolean);
+
+      const msg = inUseNames.length > 0
+        ? `사용중인 장비가 포함되어 있습니다:\n${inUseNames.join(", ")}\n\n모두 삭제하시겠습니까?`
+        : `${ids.length}개의 장비를 삭제하시겠습니까?`;
+
+      if (confirm(msg)) {
+        setAssets((prev) => prev.filter((a) => !ids.includes(a.id)));
+        supabase.from("assets").delete().in("id", ids).then(({ error }) => {
+          if (error) console.error("bulk asset delete failed:", error);
+        });
+      }
+    },
+    [assets],
+  );
+
   const deleteMember = useCallback(
     (id) => {
       const memberAssets = assets.filter((a) => a.assignedTo === id && a.status === "in-use");
@@ -261,6 +282,7 @@ export default function useAssetManager() {
     assignAsset,
     returnAsset,
     deleteAsset,
+    deleteAssets,
     deleteMember,
     deleteMembers,
   };
