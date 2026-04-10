@@ -168,7 +168,13 @@ export default function App() {
       <Modal isOpen={modalOpen === "member"} onClose={closeModal} title={editItem ? "팀원 수정" : "팀원 등록"}>
         <MemberForm
           editItem={editItem}
-          onSave={(data) => { saveMember(data, editItem); closeModal(); }}
+          onSave={(data) => {
+            saveMember(data, editItem);
+            if (detailItem && !detailItem.category && editItem && detailItem.id === editItem.id) {
+              setDetailItem({ ...detailItem, ...data });
+            }
+            closeModal();
+          }}
           onCancel={closeModal}
         />
       </Modal>
