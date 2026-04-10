@@ -55,7 +55,7 @@ export default function AssetForm({ editItem, members, onSave, onCancel }) {
       <FormField label="배정 사용자" htmlFor="asset-assignee">
         <select id="asset-assignee" value={form.assignedTo || ""} onChange={(e) => update("assignedTo", e.target.value || null)} className={selectClass}>
           <option value="">미배정</option>
-          {members.map((m) => <option key={m.id} value={m.id}>{m.name} ({m.team})</option>)}
+          {[...members].sort((a, b) => a.name.localeCompare(b.name, "ko")).map((m) => <option key={m.id} value={m.id}>{m.name} ({m.team})</option>)}
         </select>
       </FormField>
       <FormField label="비고" htmlFor="asset-note">
