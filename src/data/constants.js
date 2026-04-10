@@ -1,4 +1,4 @@
-export const CATEGORIES = [
+export const CATEGORIES = [  
   "Desktop",
   "Laptop",
   "Monitor",

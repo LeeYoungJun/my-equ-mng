@@ -16,12 +16,14 @@ No test framework is configured. No linter is configured.
 
 - React 19 + Vite 7 + Tailwind CSS 4 (with `@tailwindcss/vite` plugin)
 - lucide-react for icons
-- No backend — all state is client-side, in-memory only
+- Supabase (`VITE_SUPABASE_URL`, `VITE_SUPABASE_KEY` env vars required) — tables: `members`, `assets`, `history`
 - Korean language UI (장비 관리 시스템 = Equipment Management System)
 
 ## Architecture
 
 **State management**: A single custom hook `useAssetManager` (`src/hooks/useAssetManager.js`) owns all application state (members, assets, history) via `useState`. Computed stats use `useMemo`. No Redux, no Context API — data flows via props drilling from `App.jsx`.
+
+**Persistence**: On mount, `useAssetManager` loads all data from Supabase. If a table is empty, it seeds it from the `INITIAL_*` arrays in `src/data/`. All mutations update local state optimistically and fire-and-forget write to Supabase (errors are logged but not surfaced to the UI). A `loading` boolean is returned and used by `App.jsx` to show a loading screen.
 
 **Routing**: No router library. `App.jsx` manages a `page` state string (`"dashboard"`, `"assets"`, `"members"`, `"stock"`, `"history"`) and renders the matching page component. Navigation resets filters/search/detail panel.
 
