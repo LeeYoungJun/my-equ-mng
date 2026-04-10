@@ -16,14 +16,24 @@ function loadOrDefault(key, fallback) {
   }
 }
 
+function persistToFile(key, data) {
+  if (import.meta.env.DEV) {
+    fetch("/api/persist", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ key, data }),
+    }).catch(() => {});
+  }
+}
+
 export default function useAssetManager() {
   const [members, setMembers] = useState(() => loadOrDefault(LS_KEYS.members, INITIAL_MEMBERS));
   const [assets, setAssets] = useState(() => loadOrDefault(LS_KEYS.assets, INITIAL_ASSETS));
   const [history, setHistory] = useState(() => loadOrDefault(LS_KEYS.history, INITIAL_HISTORY));
 
-  useEffect(() => { localStorage.setItem(LS_KEYS.members, JSON.stringify(members)); }, [members]);
-  useEffect(() => { localStorage.setItem(LS_KEYS.assets, JSON.stringify(assets)); }, [assets]);
-  useEffect(() => { localStorage.setItem(LS_KEYS.history, JSON.stringify(history)); }, [history]);
+  useEffect(() => { localStorage.setItem(LS_KEYS.members, JSON.stringify(members)); persistToFile("members", members); }, [members]);
+  useEffect(() => { localStorage.setItem(LS_KEYS.assets, JSON.stringify(assets)); persistToFile("assets", assets); }, [assets]);
+  useEffect(() => { localStorage.setItem(LS_KEYS.history, JSON.stringify(history)); persistToFile("history", history); }, [history]);
 
   // Lookups
   const getMember = useCallback((id) => members.find((m) => m.id === id), [members]);
