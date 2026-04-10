@@ -30,7 +30,7 @@ export default function AssignForm({ asset, members, onAssign, onCancel }) {
           required
         >
           <option value="">선택해주세요</option>
-          {members.map((m) => (
+          {[...members].sort((a, b) => a.name.localeCompare(b.name, "ko")).map((m) => (
             <option key={m.id} value={m.id}>{m.name} ({m.team} · {m.position})</option>
           ))}
         </select>

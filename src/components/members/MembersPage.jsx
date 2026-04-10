@@ -21,14 +21,16 @@ export default function MembersPage({
   const [selectedIds, setSelectedIds] = useState(new Set());
 
   const filtered = useMemo(() => {
-    return members.filter((m) => {
-      if (filterTeam !== "all" && m.team !== filterTeam) return false;
-      if (search) {
-        const q = search.toLowerCase();
-        return m.name.toLowerCase().includes(q) || m.team.toLowerCase().includes(q) || m.position.toLowerCase().includes(q);
-      }
-      return true;
-    });
+    return members
+      .filter((m) => {
+        if (filterTeam !== "all" && m.team !== filterTeam) return false;
+        if (search) {
+          const q = search.toLowerCase();
+          return m.name.toLowerCase().includes(q) || m.team.toLowerCase().includes(q) || m.position.toLowerCase().includes(q);
+        }
+        return true;
+      })
+      .sort((a, b) => a.name.localeCompare(b.name, "ko"));
   }, [members, filterTeam, search]);
 
   useEffect(() => {

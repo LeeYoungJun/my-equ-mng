@@ -22,7 +22,7 @@ function StockTable({ items, title, emptyMsg, onAssign }) {
         <table className="w-full border-collapse text-[13px]">
           <thead>
             <tr style={{ borderBottom: "1px solid rgba(0,0,0,0.05)" }}>
-              {["카테고리", "제조사", "모델명", "세부사양", "비고", "액션"].map((h) => (
+              {["카테고리", "제조사", "모델명", "세부사양", "비고", "배정"].map((h) => (
                 <th
                   key={h}
                   className="text-left px-4 py-2.5 font-semibold text-[11px]"
@@ -65,7 +65,7 @@ function StockTable({ items, title, emptyMsg, onAssign }) {
                       aria-label={`${a.model} 배정`}
                     >
                       <UserPlus size={12} aria-hidden="true" />
-                      배정
+                      팀원
                     </button>
                   )}
                 </td>
