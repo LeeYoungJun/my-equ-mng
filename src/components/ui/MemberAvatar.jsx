@@ -6,7 +6,10 @@ import { memberImages } from "../../data/memberImages";
  * textClass  — 이니셜 폰트 크기 (예: "text-sm")
  */
 export default function MemberAvatar({ member, className = "", style = {}, textClass = "" }) {
-  const imgSrc = member?.photo ? memberImages[member.photo] : null;
+  const photo = member?.photo;
+  const imgSrc = photo
+    ? (photo.startsWith("data:") || photo.startsWith("http") ? photo : memberImages[photo] ?? null)
+    : null;
 
   if (imgSrc) {
     return (
