@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from "react";
-import { Search, Plus, Edit3, Trash2, UserPlus, ArrowLeft, AlertTriangle, Check } from "lucide-react";
+import { Search, Plus, Edit3, Trash2, UserPlus, ArrowLeft, AlertTriangle, Check, Download, ShieldAlert, Clock } from "lucide-react";
 import { CATEGORIES, STATUSES } from "../../data/constants";
 import { inputClass, selectClass } from "../ui/FormField";
 import CategoryIcon from "../ui/CategoryIcon";
@@ -19,6 +19,7 @@ export default function AssetsPage({
   onEdit,
   onDetail,
   onAssign,
+  onBulkAssign,
   onReturn,
   onDelete,
   onDeleteMultiple,
@@ -27,14 +28,34 @@ export default function AssetsPage({
 
   const STATUS_ORDER = { "in-use": 0, stock: 1, repair: 2, dispose: 3 };
 
+  const today = useMemo(() => new Date(), []);
+  const todayStr = useMemo(() => today.toISOString().split("T")[0], [today]);
+
   const fiveYearsAgo = useMemo(() => {
     const d = new Date();
     d.setFullYear(d.getFullYear() - 5);
     return d;
   }, []);
 
+  const threeMonthsLater = useMemo(() => {
+    const d = new Date();
+    d.setMonth(d.getMonth() + 3);
+    return d;
+  }, []);
+
   const needsReplacement = (a) =>
     a.category === "Laptop" && a.purchaseDate && new Date(a.purchaseDate) < fiveYearsAgo;
+
+  const warrantyStatus = (a) => {
+    if (!a.warrantyExpiry) return null;
+    const exp = new Date(a.warrantyExpiry);
+    if (exp < today) return "expired";
+    if (exp < threeMonthsLater) return "expiring";
+    return null;
+  };
+
+  const isOverdue = (a) =>
+    a.dueDate && a.status === "in-use" && a.dueDate < todayStr;
 
   const filtered = useMemo(() => {
     return assets
@@ -64,6 +85,11 @@ export default function AssetsPage({
   const someSelected = selectedIds.size > 0;
   const allSelected = filtered.length > 0 && filtered.every((a) => selectedIds.has(a.id));
 
+  const selectedStockIds = useMemo(
+    () => filtered.filter((a) => selectedIds.has(a.id) && a.status === "stock").map((a) => a.id),
+    [filtered, selectedIds],
+  );
+
   const toggleSelect = (e, id) => {
     e.stopPropagation();
     setSelectedIds((prev) => {
@@ -84,6 +110,37 @@ export default function AssetsPage({
   const handleBulkDelete = () => {
     onDeleteMultiple(Array.from(selectedIds));
     clearSelection();
+  };
+
+  const exportCSV = () => {
+    const headers = ["카테고리", "제조사", "모델명", "S/N", "세부사양", "상태", "사용자", "구입일", "보증만료일", "반납예정일", "비고"];
+    const rows = filtered.map((a) => {
+      const member = a.assignedTo ? getMember(a.assignedTo) : null;
+      const userLabel = member ? member.name : a.isShared ? (a.sharedLabel || "") : "";
+      return [
+        a.category,
+        a.manufacturer,
+        a.model,
+        a.serial || "",
+        (a.spec || "").replace(/\n/g, " "),
+        STATUSES[a.status] || a.status,
+        userLabel,
+        a.purchaseDate || "",
+        a.warrantyExpiry || "",
+        a.dueDate || "",
+        a.note || "",
+      ]
+        .map((v) => `"${String(v).replace(/"/g, '""')}"`)
+        .join(",");
+    });
+    const csv = [headers.join(","), ...rows].join("\n");
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `장비현황_${todayStr}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -119,6 +176,15 @@ export default function AssetsPage({
           {Object.entries(STATUSES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
         </select>
         <button
+          onClick={exportCSV}
+          className="px-4 py-2.5 text-[14px] font-medium cursor-pointer flex items-center gap-1.5 border-none transition-opacity hover:opacity-85"
+          style={{ borderRadius: "8px", background: "rgba(0,0,0,0.06)", color: "#1d1d1f", letterSpacing: "-0.1px" }}
+          title="현재 필터 기준으로 CSV 내보내기"
+        >
+          <Download size={15} aria-hidden="true" />
+          내보내기
+        </button>
+        <button
           onClick={onAdd}
           className="px-4 py-2.5 text-[14px] font-medium cursor-pointer flex items-center gap-1.5 border-none transition-opacity hover:opacity-85"
           style={{ borderRadius: "8px", background: "#0071e3", color: "#fff", letterSpacing: "-0.1px" }}
@@ -131,7 +197,7 @@ export default function AssetsPage({
       {/* Bulk select bar */}
       {someSelected && (
         <div
-          className="flex items-center gap-3 px-4 py-2.5 rounded-[10px] mb-4"
+          className="flex items-center gap-3 px-4 py-2.5 rounded-[10px] mb-4 flex-wrap"
           style={{ background: "rgba(0,113,227,0.06)", border: "1px solid rgba(0,113,227,0.15)" }}
         >
           <button
@@ -156,7 +222,17 @@ export default function AssetsPage({
           >
             선택 취소
           </button>
-          <div className="ml-auto">
+          <div className="ml-auto flex gap-2">
+            {selectedStockIds.length > 0 && (
+              <button
+                onClick={() => { onBulkAssign(selectedStockIds); clearSelection(); }}
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-[8px] text-[13px] font-medium cursor-pointer transition-opacity hover:opacity-80 text-white border-none"
+                style={{ background: "#0071e3" }}
+              >
+                <UserPlus size={13} aria-hidden="true" />
+                {selectedStockIds.length}개 일괄 배정
+              </button>
+            )}
             <button
               onClick={handleBulkDelete}
               className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-[8px] text-[13px] font-medium cursor-pointer transition-opacity hover:opacity-80 text-white border-none"
@@ -177,7 +253,6 @@ export default function AssetsPage({
         <table className="w-full border-collapse text-[13px]">
           <thead>
             <tr style={{ borderBottom: "1px solid rgba(0,0,0,0.06)" }}>
-              {/* 전체선택 체크박스 헤더 */}
               <th className="px-4 py-3 w-10" style={{ background: "#f5f5f7" }}>
                 <button
                   onClick={handleSelectAll}
@@ -210,6 +285,8 @@ export default function AssetsPage({
               const member = a.assignedTo ? getMember(a.assignedTo) : null;
               const userLabel = member ? member.name : a.isShared ? a.sharedLabel : "-";
               const replace = needsReplacement(a);
+              const wStatus = warrantyStatus(a);
+              const overdue = isOverdue(a);
               const isSelected = selectedIds.has(a.id);
 
               const baseBg = replace ? "rgba(255,149,0,0.04)" : "";
@@ -272,14 +349,53 @@ export default function AssetsPage({
                           교체 필요
                         </span>
                       )}
+                      {wStatus === "expired" && (
+                        <span
+                          className="flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-semibold rounded-[5px]"
+                          style={{ background: "rgba(217,48,37,0.1)", color: "#d93025" }}
+                          title={`보증 만료: ${a.warrantyExpiry}`}
+                        >
+                          <ShieldAlert size={9} strokeWidth={2.5} />
+                          보증만료
+                        </span>
+                      )}
+                      {wStatus === "expiring" && (
+                        <span
+                          className="flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-semibold rounded-[5px]"
+                          style={{ background: "rgba(0,113,227,0.1)", color: "#0071e3" }}
+                          title={`보증 만료 예정: ${a.warrantyExpiry}`}
+                        >
+                          <ShieldAlert size={9} strokeWidth={2.5} />
+                          보증임박
+                        </span>
+                      )}
                     </div>
                   </td>
                   <td className="px-4 py-2.5 font-mono text-[11px]" style={{ color: "rgba(0,0,0,0.35)" }}>
                     {a.serial || "-"}
                   </td>
                   <td className="px-4 py-2.5"><StatusBadge status={a.status} /></td>
-                  <td className="px-4 py-2.5" style={{ color: member ? "#1d1d1f" : "rgba(0,0,0,0.4)", fontWeight: member ? 500 : 400 }}>
-                    {userLabel}
+                  <td className="px-4 py-2.5">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span style={{ color: member ? "#1d1d1f" : "rgba(0,0,0,0.4)", fontWeight: member ? 500 : 400 }}>
+                        {userLabel}
+                      </span>
+                      {overdue && (
+                        <span
+                          className="flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-semibold rounded-[5px]"
+                          style={{ background: "rgba(217,48,37,0.1)", color: "#d93025" }}
+                          title={`반납 예정일 초과: ${a.dueDate}`}
+                        >
+                          <Clock size={9} strokeWidth={2.5} />
+                          기한초과
+                        </span>
+                      )}
+                      {a.dueDate && !overdue && (
+                        <span className="text-[11px]" style={{ color: "rgba(0,0,0,0.3)" }}>
+                          ~{a.dueDate}
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-4 py-2.5 text-[12px]" style={{ color: "rgba(0,0,0,0.4)" }}>
                     {a.purchaseDate || "-"}

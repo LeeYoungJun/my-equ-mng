@@ -1,5 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import useAssetManager from "./hooks/useAssetManager";
+import { toast } from "./lib/toast";
+import ToastContainer from "./components/ui/Toast";
 import Sidebar, { navItems } from "./components/layout/Sidebar";
 import PageHeader from "./components/layout/PageHeader";
 import Modal from "./components/ui/Modal";
@@ -14,17 +16,9 @@ import MemberDetail from "./components/members/MemberDetail";
 import StockPage from "./components/stock/StockPage";
 import HistoryPage from "./components/history/HistoryPage";
 
-const PAGE_DESCRIPTIONS = {
-  dashboard: "전체 장비 및 팀원 현황을 한눈에 확인하세요",
-  assets: null, // dynamic
-  members: null,
-  stock: null,
-  history: null,
-};
-
 export default function App() {
   const manager = useAssetManager();
-  const { members, assets, history, stats, loading, getMember, getAsset, getMemberAssets, getAssetHistory, saveAsset, saveMember, assignAsset, returnAsset, deleteAsset, deleteAssets, deleteMember, deleteMembers } = manager;
+  const { members, assets, history, stats, loading, getMember, getAsset, getMemberAssets, getAssetHistory, saveAsset, saveMember, assignAsset, returnAsset, deleteAsset, deleteAssets, deleteMember, deleteMembers, bulkAssignAssets } = manager;
 
   const [page, setPage] = useState("dashboard");
   const [search, setSearch] = useState("");
@@ -35,6 +29,17 @@ export default function App() {
   const [filterTeam, setFilterTeam] = useState("all");
   const [detailItem, setDetailItem] = useState(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  // Toast
+  const [toasts, setToasts] = useState([]);
+  const addToast = useCallback(({ message, type }) => {
+    setToasts((prev) => [...prev, { id: Math.random().toString(36).slice(2), message, type }]);
+  }, []);
+  const removeToast = useCallback((id) => setToasts((prev) => prev.filter((t) => t.id !== id)), []);
+
+  useEffect(() => {
+    toast._register(addToast);
+  }, [addToast]);
 
   const navigate = (pageId) => {
     setPage(pageId);
@@ -112,6 +117,7 @@ export default function App() {
             onEdit={(a) => { setEditItem(a); setModalOpen("asset"); }}
             onDetail={setDetailItem}
             onAssign={(assetId) => setModalOpen({ type: "assign", assetId })}
+            onBulkAssign={(assetIds) => setModalOpen({ type: "bulkAssign", assetIds })}
             onReturn={returnAsset}
             onDelete={deleteAsset}
             onDeleteMultiple={deleteAssets}
@@ -195,10 +201,22 @@ export default function App() {
         <AssignForm
           asset={getAsset(modalOpen?.assetId)}
           members={members}
-          onAssign={(assetId, memberId) => { assignAsset(assetId, memberId); closeModal(); }}
+          onAssign={(assetId, memberId, dueDate) => { assignAsset(assetId, memberId, dueDate); closeModal(); }}
           onCancel={closeModal}
         />
       </Modal>
+
+      <Modal isOpen={modalOpen?.type === "bulkAssign"} onClose={closeModal} title="일괄 배정">
+        <AssignForm
+          assetIds={modalOpen?.assetIds}
+          assetCount={modalOpen?.assetIds?.length}
+          members={members}
+          onAssign={(assetIds, memberId) => { bulkAssignAssets(assetIds, memberId); closeModal(); }}
+          onCancel={closeModal}
+        />
+      </Modal>
+
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
   );
 }

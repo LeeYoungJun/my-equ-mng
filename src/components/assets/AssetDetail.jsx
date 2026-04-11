@@ -1,10 +1,22 @@
-import { X } from "lucide-react";
+import { X, Wrench, Clock } from "lucide-react";
 import CategoryIcon from "../ui/CategoryIcon";
 import StatusBadge from "../ui/StatusBadge";
 
 export default function AssetDetail({ asset, getMember, getAssetHistory, onClose }) {
   const member = asset.assignedTo ? getMember(asset.assignedTo) : null;
   const assetHist = getAssetHistory(asset.id);
+
+  const todayStr = new Date().toISOString().split("T")[0];
+  const isOverdue = asset.dueDate && asset.status === "in-use" && asset.dueDate < todayStr;
+
+  const warrantyExpired = asset.warrantyExpiry && new Date(asset.warrantyExpiry) < new Date();
+  const warrantyExpiring = asset.warrantyExpiry && !warrantyExpired && (() => {
+    const d = new Date();
+    d.setMonth(d.getMonth() + 3);
+    return new Date(asset.warrantyExpiry) < d;
+  })();
+
+  const hasRepairInfo = asset.status === "repair" && (asset.repairVendor || asset.repairStartDate || asset.repairExpectedDate);
 
   return (
     <aside
@@ -58,20 +70,87 @@ export default function AssetDetail({ asset, getMember, getAssetHistory, onClose
 
         {/* Info grid */}
         <dl className="grid grid-cols-2 gap-3 mb-6">
-          {[
-            ["상태", <StatusBadge key="s" status={asset.status} />],
-            ["사용자", member?.name || (asset.isShared ? asset.sharedLabel : "미배정")],
-            ["S/N", asset.serial || "-"],
-            ["구입일", asset.purchaseDate || "-"],
-          ].map(([label, value]) => (
-            <div key={label} className="p-3 rounded-[10px]" style={{ background: "#f5f5f7" }}>
-              <dt className="text-[11px] font-semibold mb-1.5" style={{ color: "rgba(0,0,0,0.4)", letterSpacing: "-0.1px" }}>
-                {label}
-              </dt>
-              <dd className="text-[13px] font-medium m-0" style={{ color: "#1d1d1f" }}>{value}</dd>
+          <div className="p-3 rounded-[10px]" style={{ background: "#f5f5f7" }}>
+            <dt className="text-[11px] font-semibold mb-1.5" style={{ color: "rgba(0,0,0,0.4)", letterSpacing: "-0.1px" }}>상태</dt>
+            <dd className="text-[13px] font-medium m-0" style={{ color: "#1d1d1f" }}>
+              <StatusBadge status={asset.status} />
+            </dd>
+          </div>
+          <div className="p-3 rounded-[10px]" style={{ background: "#f5f5f7" }}>
+            <dt className="text-[11px] font-semibold mb-1.5" style={{ color: "rgba(0,0,0,0.4)", letterSpacing: "-0.1px" }}>사용자</dt>
+            <dd className="text-[13px] font-medium m-0" style={{ color: "#1d1d1f" }}>
+              {member?.name || (asset.isShared ? asset.sharedLabel : "미배정")}
+            </dd>
+          </div>
+          <div className="p-3 rounded-[10px]" style={{ background: "#f5f5f7" }}>
+            <dt className="text-[11px] font-semibold mb-1.5" style={{ color: "rgba(0,0,0,0.4)", letterSpacing: "-0.1px" }}>S/N</dt>
+            <dd className="text-[13px] font-medium m-0 font-mono" style={{ color: "#1d1d1f", fontSize: "12px" }}>
+              {asset.serial || "-"}
+            </dd>
+          </div>
+          <div className="p-3 rounded-[10px]" style={{ background: "#f5f5f7" }}>
+            <dt className="text-[11px] font-semibold mb-1.5" style={{ color: "rgba(0,0,0,0.4)", letterSpacing: "-0.1px" }}>구입일</dt>
+            <dd className="text-[13px] font-medium m-0" style={{ color: "#1d1d1f" }}>
+              {asset.purchaseDate || "-"}
+            </dd>
+          </div>
+          {asset.warrantyExpiry && (
+            <div className="p-3 rounded-[10px]" style={{ background: warrantyExpired ? "rgba(217,48,37,0.06)" : warrantyExpiring ? "rgba(0,113,227,0.06)" : "#f5f5f7" }}>
+              <dt className="text-[11px] font-semibold mb-1.5" style={{ color: "rgba(0,0,0,0.4)", letterSpacing: "-0.1px" }}>보증 만료일</dt>
+              <dd className="text-[13px] font-medium m-0" style={{ color: warrantyExpired ? "#d93025" : warrantyExpiring ? "#0071e3" : "#1d1d1f" }}>
+                {asset.warrantyExpiry}
+                {warrantyExpired && <span className="ml-1 text-[11px]">(만료)</span>}
+                {warrantyExpiring && <span className="ml-1 text-[11px]">(임박)</span>}
+              </dd>
             </div>
-          ))}
+          )}
+          {asset.dueDate && (
+            <div className="p-3 rounded-[10px]" style={{ background: isOverdue ? "rgba(217,48,37,0.06)" : "rgba(26,127,78,0.06)" }}>
+              <dt className="text-[11px] font-semibold mb-1.5" style={{ color: "rgba(0,0,0,0.4)", letterSpacing: "-0.1px" }}>반납 예정일</dt>
+              <dd className="flex items-center gap-1.5 text-[13px] font-medium m-0" style={{ color: isOverdue ? "#d93025" : "#1a7f4e" }}>
+                <Clock size={12} />
+                {asset.dueDate}
+                {isOverdue && <span className="text-[11px]">(기한 초과)</span>}
+              </dd>
+            </div>
+          )}
         </dl>
+
+        {/* Repair info */}
+        {hasRepairInfo && (
+          <div className="mb-5">
+            <h4
+              className="flex items-center gap-1.5 text-[13px] font-semibold mb-3"
+              style={{ color: "#0071e3", letterSpacing: "-0.2px" }}
+            >
+              <Wrench size={13} />
+              수리 정보
+            </h4>
+            <div className="p-3.5 rounded-[10px] flex flex-col gap-2" style={{ background: "rgba(0,113,227,0.04)", border: "1px solid rgba(0,113,227,0.1)" }}>
+              {asset.repairVendor && (
+                <div className="flex justify-between text-[13px]">
+                  <span style={{ color: "rgba(0,0,0,0.4)" }}>수리 업체</span>
+                  <span style={{ color: "#1d1d1f", fontWeight: 500 }}>{asset.repairVendor}</span>
+                </div>
+              )}
+              {asset.repairStartDate && (
+                <div className="flex justify-between text-[13px]">
+                  <span style={{ color: "rgba(0,0,0,0.4)" }}>수리 접수일</span>
+                  <span style={{ color: "#1d1d1f", fontWeight: 500 }}>{asset.repairStartDate}</span>
+                </div>
+              )}
+              {asset.repairExpectedDate && (
+                <div className="flex justify-between text-[13px]">
+                  <span style={{ color: "rgba(0,0,0,0.4)" }}>반환 예정일</span>
+                  <span style={{ color: asset.repairExpectedDate < new Date().toISOString().split("T")[0] ? "#d93025" : "#1d1d1f", fontWeight: 500 }}>
+                    {asset.repairExpectedDate}
+                    {asset.repairExpectedDate < new Date().toISOString().split("T")[0] && <span className="ml-1 text-[11px]">(지연)</span>}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Spec */}
         <div className="mb-5">

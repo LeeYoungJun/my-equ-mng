@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Wrench } from "lucide-react";
 import { CATEGORIES, STATUSES } from "../../data/constants";
 import FormField, { inputClass, selectClass } from "../ui/FormField";
 
@@ -11,11 +12,15 @@ export default function AssetForm({ editItem, members, onSave, onCancel }) {
       serial: "",
       spec: "",
       purchaseDate: "",
+      warrantyExpiry: "",
       status: "stock",
       assignedTo: null,
       note: "",
       isShared: false,
       sharedLabel: "",
+      repairVendor: "",
+      repairStartDate: "",
+      repairExpectedDate: "",
     },
   );
 
@@ -46,12 +51,36 @@ export default function AssetForm({ editItem, members, onSave, onCancel }) {
         <FormField label="구입일" htmlFor="asset-date">
           <input id="asset-date" type="month" value={form.purchaseDate} onChange={(e) => update("purchaseDate", e.target.value)} className={inputClass} />
         </FormField>
-        <FormField label="상태" htmlFor="asset-status">
-          <select id="asset-status" value={form.status} onChange={(e) => update("status", e.target.value)} className={selectClass}>
-            {Object.entries(STATUSES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-          </select>
+        <FormField label="보증 만료일" htmlFor="asset-warranty">
+          <input id="asset-warranty" type="month" value={form.warrantyExpiry || ""} onChange={(e) => update("warrantyExpiry", e.target.value)} className={inputClass} />
         </FormField>
       </div>
+      <FormField label="상태" htmlFor="asset-status">
+        <select id="asset-status" value={form.status} onChange={(e) => update("status", e.target.value)} className={selectClass}>
+          {Object.entries(STATUSES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+        </select>
+      </FormField>
+
+      {form.status === "repair" && (
+        <div className="mb-4 p-3.5 rounded-[10px]" style={{ background: "rgba(0,113,227,0.04)", border: "1px solid rgba(0,113,227,0.12)" }}>
+          <div className="flex items-center gap-1.5 text-[11px] font-semibold mb-3" style={{ color: "#0071e3" }}>
+            <Wrench size={12} />
+            수리 정보
+          </div>
+          <FormField label="수리 업체" htmlFor="asset-repair-vendor">
+            <input id="asset-repair-vendor" value={form.repairVendor || ""} onChange={(e) => update("repairVendor", e.target.value)} className={inputClass} placeholder="수리 업체명" />
+          </FormField>
+          <div className="grid grid-cols-2 gap-3">
+            <FormField label="수리 접수일" htmlFor="asset-repair-start">
+              <input id="asset-repair-start" type="date" value={form.repairStartDate || ""} onChange={(e) => update("repairStartDate", e.target.value)} className={inputClass} />
+            </FormField>
+            <FormField label="반환 예정일" htmlFor="asset-repair-expected">
+              <input id="asset-repair-expected" type="date" value={form.repairExpectedDate || ""} onChange={(e) => update("repairExpectedDate", e.target.value)} className={inputClass} />
+            </FormField>
+          </div>
+        </div>
+      )}
+
       <FormField label="배정 사용자" htmlFor="asset-assignee">
         <select id="asset-assignee" value={form.assignedTo || ""} onChange={(e) => update("assignedTo", e.target.value || null)} className={selectClass}>
           <option value="">미배정</option>

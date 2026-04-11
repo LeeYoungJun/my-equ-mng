@@ -5,6 +5,7 @@ import { INITIAL_ASSETS } from "../data/assets";
 import { INITIAL_HISTORY } from "../data/history";
 import { CATEGORIES, TEAMS } from "../data/constants";
 import { uid } from "../utils";
+import { toast } from "../lib/toast";
 
 export default function useAssetManager() {
   const [members, setMembers] = useState([]);
@@ -92,6 +93,7 @@ export default function useAssetManager() {
       if (editItem) {
         const updated = { ...editItem, ...data };
         setAssets((prev) => prev.map((a) => (a.id === editItem.id ? updated : a)));
+        toast.success("장비가 수정되었습니다");
         supabase.from("assets").update(data).eq("id", editItem.id).then(({ error }) => {
           if (error) console.error("asset update failed:", error);
         });
@@ -113,6 +115,7 @@ export default function useAssetManager() {
       } else {
         const newAsset = { ...data, id: uid() };
         setAssets((prev) => [...prev, newAsset]);
+        toast.success("장비가 등록되었습니다");
         supabase.from("assets").insert(newAsset).then(({ error }) => {
           if (error) console.error("asset insert failed:", error);
         });
@@ -139,25 +142,36 @@ export default function useAssetManager() {
   const saveMember = useCallback((data, editItem) => {
     if (editItem) {
       setMembers((prev) => prev.map((m) => (m.id === editItem.id ? { ...m, ...data } : m)));
+      toast.success("팀원 정보가 수정되었습니다");
       supabase.from("members").update(data).eq("id", editItem.id).then(({ error }) => {
         if (error) console.error("member update failed:", error);
       });
     } else {
       const newMember = { ...data, id: uid() };
       setMembers((prev) => [...prev, newMember]);
+      toast.success("팀원이 등록되었습니다");
       supabase.from("members").insert(newMember).then(({ error }) => {
         if (error) console.error("member insert failed:", error);
       });
     }
   }, []);
 
-  const assignAsset = useCallback((assetId, memberId) => {
+  const assignAsset = useCallback((assetId, memberId, dueDate) => {
     setAssets((prev) =>
-      prev.map((a) => (a.id === assetId ? { ...a, assignedTo: memberId, status: "in-use", isShared: false, sharedLabel: "" } : a)),
+      prev.map((a) =>
+        a.id === assetId
+          ? { ...a, assignedTo: memberId, status: "in-use", isShared: false, sharedLabel: "", dueDate: dueDate || null }
+          : a,
+      ),
     );
-    supabase.from("assets").update({ assignedTo: memberId, status: "in-use", isShared: false, sharedLabel: "" }).eq("id", assetId).then(({ error }) => {
-      if (error) console.error("assign asset failed:", error);
-    });
+    toast.success("장비가 배정되었습니다");
+    supabase
+      .from("assets")
+      .update({ assignedTo: memberId, status: "in-use", isShared: false, sharedLabel: "" })
+      .eq("id", assetId)
+      .then(({ error }) => {
+        if (error) console.error("assign asset failed:", error);
+      });
 
     const entry = {
       id: uid(),
@@ -165,7 +179,7 @@ export default function useAssetManager() {
       action: "assign",
       memberId,
       date: new Date().toISOString().split("T")[0],
-      note: "장비 배정",
+      note: dueDate ? `장비 배정 (반납 예정: ${dueDate})` : "장비 배정",
     };
     setHistory((prev) => [entry, ...prev]);
     supabase.from("history").insert(entry).then(({ error }) => {
@@ -191,11 +205,20 @@ export default function useAssetManager() {
         });
       }
       setAssets((prev) =>
-        prev.map((a) => (a.id === assetId ? { ...a, assignedTo: null, status: "stock", isShared: false, sharedLabel: "" } : a)),
+        prev.map((a) =>
+          a.id === assetId
+            ? { ...a, assignedTo: null, status: "stock", isShared: false, sharedLabel: "", dueDate: null }
+            : a,
+        ),
       );
-      supabase.from("assets").update({ assignedTo: null, status: "stock", isShared: false, sharedLabel: "" }).eq("id", assetId).then(({ error }) => {
-        if (error) console.error("return asset failed:", error);
-      });
+      toast.success("장비가 반납되었습니다");
+      supabase
+        .from("assets")
+        .update({ assignedTo: null, status: "stock", isShared: false, sharedLabel: "" })
+        .eq("id", assetId)
+        .then(({ error }) => {
+          if (error) console.error("return asset failed:", error);
+        });
     },
     [assets],
   );
@@ -203,6 +226,7 @@ export default function useAssetManager() {
   const deleteAsset = useCallback((id) => {
     if (confirm("정말 삭제하시겠습니까?")) {
       setAssets((prev) => prev.filter((a) => a.id !== id));
+      toast.success("장비가 삭제되었습니다");
       supabase.from("assets").delete().eq("id", id).then(({ error }) => {
         if (error) console.error("asset delete failed:", error);
       });
@@ -216,12 +240,14 @@ export default function useAssetManager() {
         .map((id) => assets.find((a) => a.id === id)?.model)
         .filter(Boolean);
 
-      const msg = inUseNames.length > 0
-        ? `사용중인 장비가 포함되어 있습니다:\n${inUseNames.join(", ")}\n\n모두 삭제하시겠습니까?`
-        : `${ids.length}개의 장비를 삭제하시겠습니까?`;
+      const msg =
+        inUseNames.length > 0
+          ? `사용중인 장비가 포함되어 있습니다:\n${inUseNames.join(", ")}\n\n모두 삭제하시겠습니까?`
+          : `${ids.length}개의 장비를 삭제하시겠습니까?`;
 
       if (confirm(msg)) {
         setAssets((prev) => prev.filter((a) => !ids.includes(a.id)));
+        toast.success(`${ids.length}개 장비가 삭제되었습니다`);
         supabase.from("assets").delete().in("id", ids).then(({ error }) => {
           if (error) console.error("bulk asset delete failed:", error);
         });
@@ -239,6 +265,7 @@ export default function useAssetManager() {
       }
       if (confirm("정말 삭제하시겠습니까?")) {
         setMembers((prev) => prev.filter((m) => m.id !== id));
+        toast.success("팀원이 삭제되었습니다");
         supabase.from("members").delete().eq("id", id).then(({ error }) => {
           if (error) console.error("member delete failed:", error);
         });
@@ -259,12 +286,47 @@ export default function useAssetManager() {
       if (deletable.length === 0) return;
       if (confirm(`${deletable.length}명을 삭제하시겠습니까?`)) {
         setMembers((prev) => prev.filter((m) => !deletable.includes(m.id)));
+        toast.success(`${deletable.length}명이 삭제되었습니다`);
         supabase.from("members").delete().in("id", deletable).then(({ error }) => {
           if (error) console.error("bulk member delete failed:", error);
         });
       }
     },
     [assets, members],
+  );
+
+  const bulkAssignAssets = useCallback(
+    (assetIds, memberId) => {
+      const stockIds = assetIds.filter((id) => assets.some((a) => a.id === id && a.status === "stock"));
+      if (!stockIds.length) return;
+
+      setAssets((prev) =>
+        prev.map((a) =>
+          stockIds.includes(a.id)
+            ? { ...a, assignedTo: memberId, status: "in-use", isShared: false, sharedLabel: "", dueDate: null }
+            : a,
+        ),
+      );
+      toast.success(`${stockIds.length}개 장비가 배정되었습니다`);
+
+      const today = new Date().toISOString().split("T")[0];
+      stockIds.forEach((assetId) => {
+        supabase
+          .from("assets")
+          .update({ assignedTo: memberId, status: "in-use", isShared: false, sharedLabel: "" })
+          .eq("id", assetId)
+          .then(({ error }) => {
+            if (error) console.error("bulk assign failed:", error);
+          });
+
+        const entry = { id: uid(), assetId, action: "assign", memberId, date: today, note: "일괄 배정" };
+        setHistory((prev) => [entry, ...prev]);
+        supabase.from("history").insert(entry).then(({ error }) => {
+          if (error) console.error("history insert failed:", error);
+        });
+      });
+    },
+    [assets],
   );
 
   return {
@@ -285,5 +347,6 @@ export default function useAssetManager() {
     deleteAssets,
     deleteMember,
     deleteMembers,
+    bulkAssignAssets,
   };
 }
