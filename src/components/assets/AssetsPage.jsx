@@ -299,7 +299,7 @@ export default function AssetsPage({
                   <td className="px-4 py-2.5 font-mono text-[11px] truncate" style={{ color: "rgba(0,0,0,0.35)" }}>{a.serial || "-"}</td>
 
                   {/* Inline status change */}
-                  <td className="px-4 py-2.5 relative">
+                  <td className="px-4 py-2.5 relative whitespace-nowrap">
                     <button
                       onClick={(e) => { e.stopPropagation(); setOpenStatusId(openStatusId === a.id ? null : a.id); }}
                       className="flex items-center gap-1 border-none bg-transparent cursor-pointer p-0 rounded-[6px] transition-opacity hover:opacity-75"
