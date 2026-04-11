@@ -37,7 +37,7 @@ export default function Sidebar({ currentPage, onNavigate, collapsed, onToggle }
             className="text-[15px] font-semibold whitespace-nowrap"
             style={{ color: "#fff", letterSpacing: "-0.3px" }}
           >
-            Asset Manager
+            IT 자산 관리
           </div>
         )}
       </div>

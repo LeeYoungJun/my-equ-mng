@@ -19,7 +19,7 @@ const TEAM_COLORS = {
   "데이터컨설팅팀":  "#ff9500",
 };
 
-export default function DashboardPage({ assets, members, getMemberAssets, onMemberClick }) {
+export default function DashboardPage({ assets, members, getMemberAssets, onMemberClick, onNavigate }) {
   const [hoveredCat, setHoveredCat] = useState(null);
   const [search, setSearch] = useState("");
   const [hoveredCard, setHoveredCard] = useState(null);
@@ -66,7 +66,7 @@ export default function DashboardPage({ assets, members, getMemberAssets, onMemb
           return (
             <div
               key={item.cat}
-              className="bg-white px-4 py-4 cursor-default select-none"
+              className="bg-white px-4 py-4 cursor-pointer select-none"
               style={{
                 borderRadius: "12px",
                 boxShadow: isHovered
@@ -77,6 +77,8 @@ export default function DashboardPage({ assets, members, getMemberAssets, onMemb
               }}
               onMouseEnter={() => setHoveredCat(item.cat)}
               onMouseLeave={() => setHoveredCat(null)}
+              onClick={() => onNavigate?.("assets", { category: item.cat })}
+              title={`${item.cat} 장비 전체 보기`}
             >
               <div className="flex items-center gap-2.5 mb-3">
                 <div
@@ -99,31 +101,31 @@ export default function DashboardPage({ assets, members, getMemberAssets, onMemb
               </div>
               <div className="flex gap-1.5">
                 <div
-                  className="flex-1 rounded-[8px] px-2 py-1.5 text-center"
+                  className="flex-1 rounded-[8px] px-2 py-1.5 text-center cursor-pointer transition-opacity hover:opacity-70"
                   style={{ background: "rgba(52,199,89,0.08)" }}
+                  onClick={(e) => { e.stopPropagation(); onNavigate?.("assets", { category: item.cat, status: "in-use" }); }}
+                  title="사용중 장비 보기"
                 >
-                  <div className="text-[15px] font-semibold" style={{ color: "#1a7f4e", letterSpacing: "-0.5px" }}>
-                    {item.inUse}
-                  </div>
+                  <div className="text-[15px] font-semibold" style={{ color: "#1a7f4e", letterSpacing: "-0.5px" }}>{item.inUse}</div>
                   <div className="text-[10px] font-medium" style={{ color: "#1a7f4e" }}>사용중</div>
                 </div>
                 <div
-                  className="flex-1 rounded-[8px] px-2 py-1.5 text-center"
+                  className="flex-1 rounded-[8px] px-2 py-1.5 text-center cursor-pointer transition-opacity hover:opacity-70"
                   style={{ background: "rgba(0,113,227,0.08)" }}
+                  onClick={(e) => { e.stopPropagation(); onNavigate?.("assets", { category: item.cat, status: "stock" }); }}
+                  title="재고 장비 보기"
                 >
-                  <div className="text-[15px] font-semibold" style={{ color: "#0071e3", letterSpacing: "-0.5px" }}>
-                    {item.stock}
-                  </div>
+                  <div className="text-[15px] font-semibold" style={{ color: "#0071e3", letterSpacing: "-0.5px" }}>{item.stock}</div>
                   <div className="text-[10px] font-medium" style={{ color: "#0071e3" }}>재고</div>
                 </div>
                 {(item.repair > 0 || item.dispose > 0) && (
                   <div
-                    className="flex-1 rounded-[8px] px-2 py-1.5 text-center"
+                    className="flex-1 rounded-[8px] px-2 py-1.5 text-center cursor-pointer transition-opacity hover:opacity-70"
                     style={{ background: "rgba(217,48,37,0.08)" }}
+                    onClick={(e) => { e.stopPropagation(); onNavigate?.("assets", { category: item.cat, status: "repair" }); }}
+                    title="수리/처분 장비 보기"
                   >
-                    <div className="text-[15px] font-semibold" style={{ color: "#d93025", letterSpacing: "-0.5px" }}>
-                      {item.repair + item.dispose}
-                    </div>
+                    <div className="text-[15px] font-semibold" style={{ color: "#d93025", letterSpacing: "-0.5px" }}>{item.repair + item.dispose}</div>
                     <div className="text-[10px] font-medium" style={{ color: "#d93025" }}>기타</div>
                   </div>
                 )}

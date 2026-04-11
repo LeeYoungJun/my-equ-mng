@@ -1,7 +1,10 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import useAssetManager from "./hooks/useAssetManager";
 import { toast } from "./lib/toast";
+import { dialog } from "./lib/confirm";
 import ToastContainer from "./components/ui/Toast";
+import ConfirmDialog from "./components/ui/ConfirmDialog";
+import GlobalSearch from "./components/ui/GlobalSearch";
 import Sidebar, { navItems } from "./components/layout/Sidebar";
 import PageHeader from "./components/layout/PageHeader";
 import Modal from "./components/ui/Modal";
@@ -18,7 +21,13 @@ import HistoryPage from "./components/history/HistoryPage";
 
 export default function App() {
   const manager = useAssetManager();
-  const { members, assets, history, stats, loading, getMember, getAsset, getMemberAssets, getAssetHistory, saveAsset, saveMember, assignAsset, returnAsset, deleteAsset, deleteAssets, deleteMember, deleteMembers, bulkAssignAssets } = manager;
+  const {
+    members, assets, history, stats, loading,
+    getMember, getAsset, getMemberAssets, getAssetHistory,
+    saveAsset, saveMember, assignAsset, returnAsset,
+    updateAssetStatus, deleteAsset, deleteAssets,
+    deleteMember, deleteMembers, bulkAssignAssets,
+  } = manager;
 
   const [page, setPage] = useState("dashboard");
   const [search, setSearch] = useState("");
@@ -29,6 +38,7 @@ export default function App() {
   const [filterTeam, setFilterTeam] = useState("all");
   const [detailItem, setDetailItem] = useState(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
 
   // Toast
   const [toasts, setToasts] = useState([]);
@@ -37,9 +47,33 @@ export default function App() {
   }, []);
   const removeToast = useCallback((id) => setToasts((prev) => prev.filter((t) => t.id !== id)), []);
 
+  useEffect(() => { toast._register(addToast); }, [addToast]);
+
+  // Confirm dialog
+  const [confirmConfig, setConfirmConfig] = useState(null);
+  const confirmResolveRef = useRef(null);
+  const showConfirm = useCallback((config, resolve) => {
+    setConfirmConfig(config);
+    confirmResolveRef.current = resolve;
+  }, []);
+  const handleConfirmClose = useCallback((result) => {
+    confirmResolveRef.current?.(result);
+    confirmResolveRef.current = null;
+    setConfirmConfig(null);
+  }, []);
+  useEffect(() => { dialog._register(showConfirm); }, [showConfirm]);
+
+  // Global search — Ctrl+K / Cmd+K
   useEffect(() => {
-    toast._register(addToast);
-  }, [addToast]);
+    const handler = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "k") {
+        e.preventDefault();
+        setGlobalSearchOpen((v) => !v);
+      }
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, []);
 
   const navigate = (pageId) => {
     setPage(pageId);
@@ -50,10 +84,31 @@ export default function App() {
     setDetailItem(null);
   };
 
-  const closeModal = () => {
-    setModalOpen(null);
-    setEditItem(null);
-  };
+  const navigateWithFilter = useCallback((pageId, filters = {}) => {
+    setPage(pageId);
+    setSearch("");
+    setDetailItem(null);
+    setFilterCategory(filters.category || "all");
+    setFilterStatus(filters.status || "all");
+    setFilterTeam(filters.team || "all");
+  }, []);
+
+  const handleGlobalSearchSelect = useCallback((result) => {
+    setGlobalSearchOpen(false);
+    if (result.type === "asset") {
+      setPage("assets");
+      setDetailItem(result.data);
+    } else {
+      setPage("members");
+      setDetailItem(result.data);
+    }
+    setSearch("");
+    setFilterCategory("all");
+    setFilterStatus("all");
+    setFilterTeam("all");
+  }, []);
+
+  const closeModal = () => { setModalOpen(null); setEditItem(null); };
 
   const getDescription = () => {
     switch (page) {
@@ -92,6 +147,7 @@ export default function App() {
         <PageHeader
           title={navItems.find((n) => n.id === page)?.label}
           description={getDescription()}
+          onSearchOpen={() => setGlobalSearchOpen(true)}
         />
 
         {page === "dashboard" && (
@@ -100,6 +156,7 @@ export default function App() {
             members={members}
             getMemberAssets={getMemberAssets}
             onMemberClick={(m) => { setDetailItem(m); setPage("members"); }}
+            onNavigate={navigateWithFilter}
           />
         )}
 
@@ -121,6 +178,7 @@ export default function App() {
             onReturn={returnAsset}
             onDelete={deleteAsset}
             onDeleteMultiple={deleteAssets}
+            onStatusChange={updateAssetStatus}
           />
         )}
 
@@ -141,10 +199,7 @@ export default function App() {
         )}
 
         {page === "stock" && (
-          <StockPage
-            assets={assets}
-            onAssign={(assetId) => setModalOpen({ type: "assign", assetId })}
-          />
+          <StockPage assets={assets} onAssign={(assetId) => setModalOpen({ type: "assign", assetId })} />
         )}
 
         {page === "history" && (
@@ -152,14 +207,9 @@ export default function App() {
         )}
       </main>
 
-      {/* Detail Panel */}
+      {/* Detail Panels */}
       {detailItem && isAssetDetail && (
-        <AssetDetail
-          asset={detailItem}
-          getMember={getMember}
-          getAssetHistory={getAssetHistory}
-          onClose={() => setDetailItem(null)}
-        />
+        <AssetDetail asset={detailItem} getMember={getMember} getAssetHistory={getAssetHistory} onClose={() => setDetailItem(null)} />
       )}
       {detailItem && !isAssetDetail && (
         <MemberDetail
@@ -169,18 +219,14 @@ export default function App() {
           getAsset={getAsset}
           getMember={getMember}
           onAssetClick={setDetailItem}
+          onReturn={returnAsset}
           onClose={() => setDetailItem(null)}
         />
       )}
 
       {/* Modals */}
       <Modal isOpen={modalOpen === "asset"} onClose={closeModal} title={editItem ? "장비 수정" : "장비 등록"}>
-        <AssetForm
-          editItem={editItem}
-          members={members}
-          onSave={(data) => { saveAsset(data, editItem); closeModal(); }}
-          onCancel={closeModal}
-        />
+        <AssetForm editItem={editItem} members={members} onSave={(data) => { saveAsset(data, editItem); closeModal(); }} onCancel={closeModal} />
       </Modal>
 
       <Modal isOpen={modalOpen === "member"} onClose={closeModal} title={editItem ? "팀원 수정" : "팀원 등록"}>
@@ -201,6 +247,7 @@ export default function App() {
         <AssignForm
           asset={getAsset(modalOpen?.assetId)}
           members={members}
+          getMemberAssets={getMemberAssets}
           onAssign={(assetId, memberId, dueDate) => { assignAsset(assetId, memberId, dueDate); closeModal(); }}
           onCancel={closeModal}
         />
@@ -211,10 +258,25 @@ export default function App() {
           assetIds={modalOpen?.assetIds}
           assetCount={modalOpen?.assetIds?.length}
           members={members}
+          getMemberAssets={getMemberAssets}
           onAssign={(assetIds, memberId) => { bulkAssignAssets(assetIds, memberId); closeModal(); }}
           onCancel={closeModal}
         />
       </Modal>
+
+      {/* Global Search */}
+      {globalSearchOpen && (
+        <GlobalSearch
+          assets={assets}
+          members={members}
+          getMember={getMember}
+          onSelect={handleGlobalSearchSelect}
+          onClose={() => setGlobalSearchOpen(false)}
+        />
+      )}
+
+      {/* Confirm Dialog */}
+      <ConfirmDialog config={confirmConfig} onClose={handleConfirmClose} />
 
       <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>

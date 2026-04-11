@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { X, Wrench, Clock } from "lucide-react";
 import CategoryIcon from "../ui/CategoryIcon";
 import StatusBadge from "../ui/StatusBadge";
@@ -18,6 +19,12 @@ export default function AssetDetail({ asset, getMember, getAssetHistory, onClose
 
   const hasRepairInfo = asset.status === "repair" && (asset.repairVendor || asset.repairStartDate || asset.repairExpectedDate);
 
+  useEffect(() => {
+    const handler = (e) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [onClose]);
+
   return (
     <aside
       className="fixed right-0 top-0 bottom-0 w-[420px] bg-white z-[500] overflow-auto"
@@ -30,17 +37,15 @@ export default function AssetDetail({ asset, getMember, getAssetHistory, onClose
         className="px-6 py-5 flex items-center justify-between sticky top-0 bg-white z-10"
         style={{ borderBottom: "1px solid rgba(0,0,0,0.06)" }}
       >
-        <h3
-          className="text-[17px] font-semibold"
-          style={{ color: "#1d1d1f", letterSpacing: "-0.3px" }}
-        >
+        <h3 className="text-[17px] font-semibold" style={{ color: "#1d1d1f", letterSpacing: "-0.3px" }}>
           장비 상세
         </h3>
         <button
           onClick={onClose}
           className="w-8 h-8 flex items-center justify-center rounded-full border-none cursor-pointer transition-colors"
           style={{ background: "rgba(0,0,0,0.06)", color: "rgba(0,0,0,0.48)" }}
-          aria-label="닫기"
+          aria-label="닫기 (ESC)"
+          title="닫기 (ESC)"
         >
           <X size={15} />
         </button>
@@ -56,10 +61,7 @@ export default function AssetDetail({ asset, getMember, getAssetHistory, onClose
             <CategoryIcon category={asset.category} size={26} />
           </div>
           <div>
-            <div
-              className="text-[18px] font-semibold"
-              style={{ color: "#1d1d1f", letterSpacing: "-0.4px", lineHeight: 1.2 }}
-            >
+            <div className="text-[18px] font-semibold" style={{ color: "#1d1d1f", letterSpacing: "-0.4px", lineHeight: 1.2 }}>
               {asset.model}
             </div>
             <div className="text-[13px] mt-0.5" style={{ color: "rgba(0,0,0,0.48)" }}>
@@ -72,9 +74,7 @@ export default function AssetDetail({ asset, getMember, getAssetHistory, onClose
         <dl className="grid grid-cols-2 gap-3 mb-6">
           <div className="p-3 rounded-[10px]" style={{ background: "#f5f5f7" }}>
             <dt className="text-[11px] font-semibold mb-1.5" style={{ color: "rgba(0,0,0,0.4)", letterSpacing: "-0.1px" }}>상태</dt>
-            <dd className="text-[13px] font-medium m-0" style={{ color: "#1d1d1f" }}>
-              <StatusBadge status={asset.status} />
-            </dd>
+            <dd className="text-[13px] font-medium m-0"><StatusBadge status={asset.status} /></dd>
           </div>
           <div className="p-3 rounded-[10px]" style={{ background: "#f5f5f7" }}>
             <dt className="text-[11px] font-semibold mb-1.5" style={{ color: "rgba(0,0,0,0.4)", letterSpacing: "-0.1px" }}>사용자</dt>
@@ -90,9 +90,7 @@ export default function AssetDetail({ asset, getMember, getAssetHistory, onClose
           </div>
           <div className="p-3 rounded-[10px]" style={{ background: "#f5f5f7" }}>
             <dt className="text-[11px] font-semibold mb-1.5" style={{ color: "rgba(0,0,0,0.4)", letterSpacing: "-0.1px" }}>구입일</dt>
-            <dd className="text-[13px] font-medium m-0" style={{ color: "#1d1d1f" }}>
-              {asset.purchaseDate || "-"}
-            </dd>
+            <dd className="text-[13px] font-medium m-0" style={{ color: "#1d1d1f" }}>{asset.purchaseDate || "-"}</dd>
           </div>
           {asset.warrantyExpiry && (
             <div className="p-3 rounded-[10px]" style={{ background: warrantyExpired ? "rgba(217,48,37,0.06)" : warrantyExpiring ? "rgba(0,113,227,0.06)" : "#f5f5f7" }}>
@@ -119,12 +117,8 @@ export default function AssetDetail({ asset, getMember, getAssetHistory, onClose
         {/* Repair info */}
         {hasRepairInfo && (
           <div className="mb-5">
-            <h4
-              className="flex items-center gap-1.5 text-[13px] font-semibold mb-3"
-              style={{ color: "#0071e3", letterSpacing: "-0.2px" }}
-            >
-              <Wrench size={13} />
-              수리 정보
+            <h4 className="flex items-center gap-1.5 text-[13px] font-semibold mb-3" style={{ color: "#0071e3", letterSpacing: "-0.2px" }}>
+              <Wrench size={13} />수리 정보
             </h4>
             <div className="p-3.5 rounded-[10px] flex flex-col gap-2" style={{ background: "rgba(0,113,227,0.04)", border: "1px solid rgba(0,113,227,0.1)" }}>
               {asset.repairVendor && (
@@ -142,9 +136,9 @@ export default function AssetDetail({ asset, getMember, getAssetHistory, onClose
               {asset.repairExpectedDate && (
                 <div className="flex justify-between text-[13px]">
                   <span style={{ color: "rgba(0,0,0,0.4)" }}>반환 예정일</span>
-                  <span style={{ color: asset.repairExpectedDate < new Date().toISOString().split("T")[0] ? "#d93025" : "#1d1d1f", fontWeight: 500 }}>
+                  <span style={{ color: asset.repairExpectedDate < todayStr ? "#d93025" : "#1d1d1f", fontWeight: 500 }}>
                     {asset.repairExpectedDate}
-                    {asset.repairExpectedDate < new Date().toISOString().split("T")[0] && <span className="ml-1 text-[11px]">(지연)</span>}
+                    {asset.repairExpectedDate < todayStr && <span className="ml-1 text-[11px]">(지연)</span>}
                   </span>
                 </div>
               )}
@@ -154,13 +148,8 @@ export default function AssetDetail({ asset, getMember, getAssetHistory, onClose
 
         {/* Spec */}
         <div className="mb-5">
-          <h4 className="text-[11px] font-semibold mb-2" style={{ color: "rgba(0,0,0,0.4)", letterSpacing: "-0.1px" }}>
-            세부사양
-          </h4>
-          <div
-            className="p-3.5 rounded-[10px] text-[13px] leading-relaxed whitespace-pre-wrap"
-            style={{ background: "#f5f5f7", color: "rgba(0,0,0,0.6)" }}
-          >
+          <h4 className="text-[11px] font-semibold mb-2" style={{ color: "rgba(0,0,0,0.4)", letterSpacing: "-0.1px" }}>세부사양</h4>
+          <div className="p-3.5 rounded-[10px] text-[13px] leading-relaxed whitespace-pre-wrap" style={{ background: "#f5f5f7", color: "rgba(0,0,0,0.6)" }}>
             {asset.spec || "-"}
           </div>
         </div>
@@ -168,13 +157,8 @@ export default function AssetDetail({ asset, getMember, getAssetHistory, onClose
         {/* Note */}
         {asset.note && (
           <div className="mb-5">
-            <h4 className="text-[11px] font-semibold mb-2" style={{ color: "rgba(0,0,0,0.4)", letterSpacing: "-0.1px" }}>
-              비고
-            </h4>
-            <div
-              className="p-3.5 rounded-[10px] text-[13px]"
-              style={{ background: "rgba(255,149,0,0.07)", color: "rgba(0,0,0,0.6)" }}
-            >
+            <h4 className="text-[11px] font-semibold mb-2" style={{ color: "rgba(0,0,0,0.4)", letterSpacing: "-0.1px" }}>비고</h4>
+            <div className="p-3.5 rounded-[10px] text-[13px]" style={{ background: "rgba(255,149,0,0.07)", color: "rgba(0,0,0,0.6)" }}>
               {asset.note}
             </div>
           </div>
@@ -182,26 +166,14 @@ export default function AssetDetail({ asset, getMember, getAssetHistory, onClose
 
         {/* History */}
         <div>
-          <h4
-            className="text-[13px] font-semibold mb-3"
-            style={{ color: "#1d1d1f", letterSpacing: "-0.2px" }}
-          >
-            이력
-          </h4>
+          <h4 className="text-[13px] font-semibold mb-3" style={{ color: "#1d1d1f", letterSpacing: "-0.2px" }}>이력</h4>
           {assetHist.length > 0 ? (
             assetHist.map((h) => {
               const hmember = h.memberId ? getMember(h.memberId) : null;
               return (
-                <div
-                  key={h.id}
-                  className="flex gap-3 py-2.5 text-[12px]"
-                  style={{ borderBottom: "1px solid rgba(0,0,0,0.05)" }}
-                >
+                <div key={h.id} className="flex gap-3 py-2.5 text-[12px]" style={{ borderBottom: "1px solid rgba(0,0,0,0.05)" }}>
                   <time className="w-20 shrink-0" style={{ color: "rgba(0,0,0,0.4)" }}>{h.date}</time>
-                  <span
-                    className="font-semibold w-10 shrink-0"
-                    style={{ color: h.action === "assign" ? "#1a7f4e" : "#c47e00" }}
-                  >
+                  <span className="font-semibold w-10 shrink-0" style={{ color: h.action === "assign" ? "#1a7f4e" : "#c47e00" }}>
                     {h.action === "assign" ? "배정" : "반납"}
                   </span>
                   <span style={{ color: "rgba(0,0,0,0.6)" }}>{hmember?.name || "-"}</span>
@@ -210,9 +182,7 @@ export default function AssetDetail({ asset, getMember, getAssetHistory, onClose
               );
             })
           ) : (
-            <div className="py-5 text-center text-[13px]" style={{ color: "rgba(0,0,0,0.3)" }}>
-              이력 없음
-            </div>
+            <div className="py-5 text-center text-[13px]" style={{ color: "rgba(0,0,0,0.3)" }}>이력 없음</div>
           )}
         </div>
       </div>

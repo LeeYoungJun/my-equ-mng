@@ -1,10 +1,17 @@
-import { X } from "lucide-react";
+import { useEffect } from "react";
+import { X, ArrowLeft } from "lucide-react";
 import CategoryIcon from "../ui/CategoryIcon";
 import MemberAvatar from "../ui/MemberAvatar";
 
-export default function MemberDetail({ member, getMemberAssets, history, getAsset, getMember, onAssetClick, onClose }) {
+export default function MemberDetail({ member, getMemberAssets, history, getAsset, getMember, onAssetClick, onReturn, onClose }) {
   const mAssets = getMemberAssets(member.id);
   const memberHist = history.filter((h) => h.memberId === member.id).sort((a, b) => b.date.localeCompare(a.date));
+
+  useEffect(() => {
+    const handler = (e) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [onClose]);
 
   return (
     <aside
@@ -25,7 +32,8 @@ export default function MemberDetail({ member, getMemberAssets, history, getAsse
           onClick={onClose}
           className="w-8 h-8 flex items-center justify-center rounded-full border-none cursor-pointer transition-colors"
           style={{ background: "rgba(0,0,0,0.06)", color: "rgba(0,0,0,0.48)" }}
-          aria-label="닫기"
+          aria-label="닫기 (ESC)"
+          title="닫기 (ESC)"
         >
           <X size={15} />
         </button>
@@ -47,6 +55,11 @@ export default function MemberDetail({ member, getMemberAssets, history, getAsse
             <div className="text-[13px] mt-0.5" style={{ color: "rgba(0,0,0,0.48)" }}>
               {member.team} · {member.position}
             </div>
+            {member.email && (
+              <div className="text-[12px] mt-0.5" style={{ color: "rgba(0,0,0,0.35)" }}>
+                {member.email}
+              </div>
+            )}
           </div>
         </div>
 
@@ -58,25 +71,37 @@ export default function MemberDetail({ member, getMemberAssets, history, getAsse
           </h4>
           {mAssets.length > 0 ? (
             mAssets.map((a) => (
-              <button
+              <div
                 key={a.id}
-                className="flex items-center gap-3 px-4 py-3 rounded-[10px] mb-2 cursor-pointer w-full text-left border-none transition-colors"
+                className="flex items-center gap-3 px-4 py-3 rounded-[10px] mb-2 group"
                 style={{ background: "#f5f5f7" }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = "#ebebed")}
-                onMouseLeave={(e) => (e.currentTarget.style.background = "#f5f5f7")}
-                onClick={() => onAssetClick(a)}
-                aria-label={`${a.manufacturer} ${a.model} 상세 보기`}
               >
-                <span style={{ color: "#0071e3" }}>
+                <span style={{ color: "#0071e3", flexShrink: 0 }}>
                   <CategoryIcon category={a.category} size={17} />
                 </span>
-                <div>
+                <button
+                  className="flex-1 min-w-0 text-left bg-transparent border-none cursor-pointer p-0"
+                  onClick={() => onAssetClick(a)}
+                  aria-label={`${a.manufacturer} ${a.model} 상세 보기`}
+                >
                   <div className="text-[13px] font-semibold" style={{ color: "#1d1d1f" }}>
                     {a.manufacturer} {a.model}
                   </div>
-                  <div className="text-[11px] mt-0.5" style={{ color: "rgba(0,0,0,0.4)" }}>{a.spec}</div>
-                </div>
-              </button>
+                  <div className="text-[11px] mt-0.5 truncate" style={{ color: "rgba(0,0,0,0.4)" }}>{a.spec}</div>
+                </button>
+                {onReturn && (
+                  <button
+                    onClick={() => onReturn(a.id)}
+                    className="flex items-center gap-1 px-2.5 py-1 rounded-[7px] text-[11px] font-medium border-none cursor-pointer transition-all opacity-0 group-hover:opacity-100"
+                    style={{ background: "rgba(196,126,0,0.1)", color: "#c47e00" }}
+                    title="반납"
+                    aria-label={`${a.model} 반납`}
+                  >
+                    <ArrowLeft size={11} />
+                    반납
+                  </button>
+                )}
+              </div>
             ))
           ) : (
             <div
@@ -90,23 +115,14 @@ export default function MemberDetail({ member, getMemberAssets, history, getAsse
 
         {/* History */}
         <section>
-          <h4 className="text-[13px] font-semibold mb-3" style={{ color: "#1d1d1f", letterSpacing: "-0.2px" }}>
-            이력
-          </h4>
+          <h4 className="text-[13px] font-semibold mb-3" style={{ color: "#1d1d1f", letterSpacing: "-0.2px" }}>이력</h4>
           {memberHist.length > 0 ? (
             memberHist.map((h) => {
               const asset = getAsset(h.assetId);
               return (
-                <div
-                  key={h.id}
-                  className="flex gap-3 py-2.5 text-[12px]"
-                  style={{ borderBottom: "1px solid rgba(0,0,0,0.05)" }}
-                >
+                <div key={h.id} className="flex gap-3 py-2.5 text-[12px]" style={{ borderBottom: "1px solid rgba(0,0,0,0.05)" }}>
                   <time className="w-20 shrink-0" style={{ color: "rgba(0,0,0,0.4)" }}>{h.date}</time>
-                  <span
-                    className="font-semibold w-10 shrink-0"
-                    style={{ color: h.action === "assign" ? "#1a7f4e" : "#c47e00" }}
-                  >
+                  <span className="font-semibold w-10 shrink-0" style={{ color: h.action === "assign" ? "#1a7f4e" : "#c47e00" }}>
                     {h.action === "assign" ? "배정" : "반납"}
                   </span>
                   <span style={{ color: "rgba(0,0,0,0.6)" }}>{asset?.model || "알 수 없음"}</span>
@@ -114,9 +130,7 @@ export default function MemberDetail({ member, getMemberAssets, history, getAsse
               );
             })
           ) : (
-            <div className="py-5 text-center text-[13px]" style={{ color: "rgba(0,0,0,0.3)" }}>
-              이력 없음
-            </div>
+            <div className="py-5 text-center text-[13px]" style={{ color: "rgba(0,0,0,0.3)" }}>이력 없음</div>
           )}
         </section>
       </div>

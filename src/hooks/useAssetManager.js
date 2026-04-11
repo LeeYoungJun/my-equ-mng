@@ -3,9 +3,10 @@ import { supabase } from "../lib/supabase";
 import { INITIAL_MEMBERS } from "../data/members";
 import { INITIAL_ASSETS } from "../data/assets";
 import { INITIAL_HISTORY } from "../data/history";
-import { CATEGORIES, TEAMS } from "../data/constants";
+import { CATEGORIES, TEAMS, STATUSES } from "../data/constants";
 import { uid } from "../utils";
 import { toast } from "../lib/toast";
+import { dialog } from "../lib/confirm";
 
 export default function useAssetManager() {
   const [members, setMembers] = useState([]);
@@ -223,8 +224,49 @@ export default function useAssetManager() {
     [assets],
   );
 
-  const deleteAsset = useCallback((id) => {
-    if (confirm("정말 삭제하시겠습니까?")) {
+  const updateAssetStatus = useCallback(
+    (assetId, status) => {
+      const asset = assets.find((a) => a.id === assetId);
+      if (!asset || asset.status === status) return;
+
+      const today = new Date().toISOString().split("T")[0];
+
+      // If was in-use and changing away, create a return history entry
+      if (asset.assignedTo && status !== "in-use") {
+        const entry = {
+          id: uid(),
+          assetId,
+          action: "return",
+          memberId: asset.assignedTo,
+          date: today,
+          note: `상태 변경 → ${STATUSES[status]}`,
+        };
+        setHistory((prev) => [entry, ...prev]);
+        supabase.from("history").insert(entry).then(({ error }) => {
+          if (error) console.error("history insert failed:", error);
+        });
+      }
+
+      const update = {
+        status,
+        ...(asset.assignedTo && status !== "in-use" ? { assignedTo: null, dueDate: null } : {}),
+      };
+
+      setAssets((prev) => prev.map((a) => (a.id === assetId ? { ...a, ...update } : a)));
+      toast.success("상태가 변경되었습니다");
+      supabase.from("assets").update(update).eq("id", assetId).then(({ error }) => {
+        if (error) console.error("status update failed:", error);
+      });
+    },
+    [assets],
+  );
+
+  const deleteAsset = useCallback(async (id) => {
+    const ok = await dialog.confirm("장비를 삭제하시겠습니까?", {
+      type: "danger",
+      confirmLabel: "삭제",
+    });
+    if (ok) {
       setAssets((prev) => prev.filter((a) => a.id !== id));
       toast.success("장비가 삭제되었습니다");
       supabase.from("assets").delete().eq("id", id).then(({ error }) => {
@@ -234,18 +276,19 @@ export default function useAssetManager() {
   }, []);
 
   const deleteAssets = useCallback(
-    (ids) => {
+    async (ids) => {
       const inUseNames = ids
         .filter((id) => assets.some((a) => a.id === id && a.status === "in-use"))
         .map((id) => assets.find((a) => a.id === id)?.model)
         .filter(Boolean);
 
-      const msg =
+      const message =
         inUseNames.length > 0
           ? `사용중인 장비가 포함되어 있습니다:\n${inUseNames.join(", ")}\n\n모두 삭제하시겠습니까?`
           : `${ids.length}개의 장비를 삭제하시겠습니까?`;
 
-      if (confirm(msg)) {
+      const ok = await dialog.confirm(message, { type: "danger", confirmLabel: "삭제" });
+      if (ok) {
         setAssets((prev) => prev.filter((a) => !ids.includes(a.id)));
         toast.success(`${ids.length}개 장비가 삭제되었습니다`);
         supabase.from("assets").delete().in("id", ids).then(({ error }) => {
@@ -257,13 +300,19 @@ export default function useAssetManager() {
   );
 
   const deleteMember = useCallback(
-    (id) => {
+    async (id) => {
       const memberAssets = assets.filter((a) => a.assignedTo === id && a.status === "in-use");
       if (memberAssets.length > 0) {
-        alert("배정된 장비가 있는 팀원은 삭제할 수 없습니다. 먼저 장비를 반납해주세요.");
+        await dialog.alert("배정된 장비가 있는 팀원은 삭제할 수 없습니다.\n먼저 장비를 반납해주세요.", {
+          title: "삭제 불가",
+        });
         return;
       }
-      if (confirm("정말 삭제하시겠습니까?")) {
+      const ok = await dialog.confirm("팀원을 삭제하시겠습니까?", {
+        type: "danger",
+        confirmLabel: "삭제",
+      });
+      if (ok) {
         setMembers((prev) => prev.filter((m) => m.id !== id));
         toast.success("팀원이 삭제되었습니다");
         supabase.from("members").delete().eq("id", id).then(({ error }) => {
@@ -275,16 +324,23 @@ export default function useAssetManager() {
   );
 
   const deleteMembers = useCallback(
-    (ids) => {
+    async (ids) => {
       const withAssets = ids.filter((id) => assets.some((a) => a.assignedTo === id && a.status === "in-use"));
       const deletable = ids.filter((id) => !assets.some((a) => a.assignedTo === id && a.status === "in-use"));
 
       if (withAssets.length > 0) {
         const names = withAssets.map((id) => members.find((m) => m.id === id)?.name).filter(Boolean).join(", ");
-        alert(`배정된 장비가 있어 삭제할 수 없는 팀원: ${names}\n\n먼저 장비를 반납해주세요.`);
+        await dialog.alert(`배정된 장비가 있어 삭제할 수 없는 팀원:\n${names}\n\n먼저 장비를 반납해주세요.`, {
+          title: "일부 삭제 불가",
+        });
       }
       if (deletable.length === 0) return;
-      if (confirm(`${deletable.length}명을 삭제하시겠습니까?`)) {
+
+      const ok = await dialog.confirm(`${deletable.length}명을 삭제하시겠습니까?`, {
+        type: "danger",
+        confirmLabel: "삭제",
+      });
+      if (ok) {
         setMembers((prev) => prev.filter((m) => !deletable.includes(m.id)));
         toast.success(`${deletable.length}명이 삭제되었습니다`);
         supabase.from("members").delete().in("id", deletable).then(({ error }) => {
@@ -343,6 +399,7 @@ export default function useAssetManager() {
     saveMember,
     assignAsset,
     returnAsset,
+    updateAssetStatus,
     deleteAsset,
     deleteAssets,
     deleteMember,
