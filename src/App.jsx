@@ -217,7 +217,6 @@ export default function App() {
           getMemberAssets={getMemberAssets}
           history={history}
           getAsset={getAsset}
-          getMember={getMember}
           onAssetClick={setDetailItem}
           onReturn={returnAsset}
           onClose={() => setDetailItem(null)}

@@ -24,7 +24,11 @@ export default function AssetForm({ editItem, members, onSave, onCancel }) {
     },
   );
 
-  const update = (field, value) => setForm((prev) => ({ ...prev, [field]: value }));
+  const update = (field, value) => setForm((prev) => {
+    const next = { ...prev, [field]: value };
+    if (field === "status" && value !== "in-use") next.assignedTo = null;
+    return next;
+  });
 
   return (
     <form onSubmit={(e) => { e.preventDefault(); onSave(form); }}>

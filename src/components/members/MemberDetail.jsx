@@ -3,7 +3,7 @@ import { X, ArrowLeft } from "lucide-react";
 import CategoryIcon from "../ui/CategoryIcon";
 import MemberAvatar from "../ui/MemberAvatar";
 
-export default function MemberDetail({ member, getMemberAssets, history, getAsset, getMember, onAssetClick, onReturn, onClose }) {
+export default function MemberDetail({ member, getMemberAssets, history, getAsset, onAssetClick, onReturn, onClose }) {
   const mAssets = getMemberAssets(member.id);
   const memberHist = history.filter((h) => h.memberId === member.id).sort((a, b) => b.date.localeCompare(a.date));
 

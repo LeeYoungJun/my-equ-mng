@@ -168,7 +168,7 @@ export default function useAssetManager() {
     toast.success("장비가 배정되었습니다");
     supabase
       .from("assets")
-      .update({ assignedTo: memberId, status: "in-use", isShared: false, sharedLabel: "" })
+      .update({ assignedTo: memberId, status: "in-use", isShared: false, sharedLabel: "", dueDate: dueDate || null })
       .eq("id", assetId)
       .then(({ error }) => {
         if (error) console.error("assign asset failed:", error);
@@ -215,7 +215,7 @@ export default function useAssetManager() {
       toast.success("장비가 반납되었습니다");
       supabase
         .from("assets")
-        .update({ assignedTo: null, status: "stock", isShared: false, sharedLabel: "" })
+        .update({ assignedTo: null, status: "stock", isShared: false, sharedLabel: "", dueDate: null })
         .eq("id", assetId)
         .then(({ error }) => {
           if (error) console.error("return asset failed:", error);
@@ -236,7 +236,7 @@ export default function useAssetManager() {
         const entry = {
           id: uid(),
           assetId,
-          action: "return",
+          action: "status-change",
           memberId: asset.assignedTo,
           date: today,
           note: `상태 변경 → ${STATUSES[status]}`,
@@ -366,20 +366,21 @@ export default function useAssetManager() {
       toast.success(`${stockIds.length}개 장비가 배정되었습니다`);
 
       const today = new Date().toISOString().split("T")[0];
-      stockIds.forEach((assetId) => {
-        supabase
-          .from("assets")
-          .update({ assignedTo: memberId, status: "in-use", isShared: false, sharedLabel: "" })
-          .eq("id", assetId)
-          .then(({ error }) => {
-            if (error) console.error("bulk assign failed:", error);
-          });
 
-        const entry = { id: uid(), assetId, action: "assign", memberId, date: today, note: "일괄 배정" };
-        setHistory((prev) => [entry, ...prev]);
-        supabase.from("history").insert(entry).then(({ error }) => {
-          if (error) console.error("history insert failed:", error);
+      supabase
+        .from("assets")
+        .update({ assignedTo: memberId, status: "in-use", isShared: false, sharedLabel: "" })
+        .in("id", stockIds)
+        .then(({ error }) => {
+          if (error) console.error("bulk assign failed:", error);
         });
+
+      const entries = stockIds.map((assetId) => ({
+        id: uid(), assetId, action: "assign", memberId, date: today, note: "일괄 배정",
+      }));
+      setHistory((prev) => [...entries, ...prev]);
+      supabase.from("history").insert(entries).then(({ error }) => {
+        if (error) console.error("history bulk insert failed:", error);
       });
     },
     [assets],

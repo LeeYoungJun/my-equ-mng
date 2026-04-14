@@ -1,16 +1,9 @@
 import { useMemo, useState, useEffect, useRef } from "react";
 import { Search, Plus, Edit3, Trash2, UserPlus, ArrowLeft, AlertTriangle, Check, Download, ShieldAlert, Clock, ChevronDown } from "lucide-react";
-import { CATEGORIES, STATUSES } from "../../data/constants";
+import { CATEGORIES, STATUSES, STATUS_COLOR_STYLES } from "../../data/constants";
 import { inputClass, selectClass } from "../ui/FormField";
 import CategoryIcon from "../ui/CategoryIcon";
 import StatusBadge from "../ui/StatusBadge";
-
-const STATUS_COLORS = {
-  "in-use": { bg: "rgba(26,127,78,0.08)", color: "#1a7f4e" },
-  stock:    { bg: "rgba(0,113,227,0.08)",  color: "#0071e3" },
-  repair:   { bg: "rgba(255,149,0,0.08)",  color: "#c47e00" },
-  dispose:  { bg: "rgba(217,48,37,0.08)",  color: "#d93025" },
-};
 
 function StatusDropdown({ assetId, currentStatus, onStatusChange, onClose }) {
   const ref = useRef(null);
@@ -31,7 +24,7 @@ function StatusDropdown({ assetId, currentStatus, onStatusChange, onClose }) {
       style={{ background: "#fff", boxShadow: "0 4px 20px rgba(0,0,0,0.15)", minWidth: "120px", border: "1px solid rgba(0,0,0,0.06)" }}
     >
       {options.map(([k, v]) => {
-        const c = STATUS_COLORS[k];
+        const c = STATUS_COLOR_STYLES[k];
         return (
           <button
             key={k}
